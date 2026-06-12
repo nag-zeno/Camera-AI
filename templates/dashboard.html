@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Security Camera — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #080c14;
+  --panel:   #0d1117;
+  --panel2:  #121920;
+  --border:  #1c2a3a;
+  --accent:  #00c9ff;
+  --accent2: #6366f1;
+  --normal:  #22d3a5;
+  --watch:   #a78bfa;
+  --warning: #f59e0b;
+  --alert:   #ef4444;
+  --critical:#dc2626;
+  --text:    #e2e8f0;
+  --muted:   #4b6280;
+  --mono:    'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow:hidden}
+
+/* ── Header ── */
+header{
+  background:linear-gradient(90deg,#080c14,#0d1525);
+  border-bottom:1px solid var(--border);
+  padding:10px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:52px;
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{
+  width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;box-shadow:0 0 16px rgba(0,201,255,.3);
+}
+.logo h1{font-size:.95rem;font-weight:600;color:var(--text);letter-spacing:.5px}
+.logo span{font-size:.7rem;color:var(--muted);font-weight:400}
+.header-right{display:flex;align-items:center;gap:10px}
+.hbadge{
+  display:flex;align-items:center;gap:6px;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:20px;padding:4px 12px;font-size:.75rem;
+}
+.hbadge .dot{width:7px;height:7px;border-radius:50%}
+.dot-live{background:var(--alert);animation:blink 1s infinite}
+.dot-ok{background:var(--normal)}
+.fps-val{color:var(--accent);font-family:var(--mono);font-weight:600}
+
+/* ── Toast notifications ── */
+#toast-container{position:fixed;top:62px;right:14px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:300px}
+.toast{
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:10px 14px;font-size:.75rem;pointer-events:auto;
+  display:flex;align-items:flex-start;gap:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);backdrop-filter:blur(8px);
+  animation:toastIn .3s ease;transition:opacity .4s,transform .4s;
+}
+.toast.warning{border-left:3px solid var(--warning)}
+.toast.alert,.toast.critical{border-left:3px solid var(--alert);animation:toastIn .3s ease,shake .4s .3s}
+.toast-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+.toast-body{flex:1;min-width:0}
+.toast-title{font-weight:600;margin-bottom:2px;color:var(--text)}
+.toast-msg{color:var(--muted);line-height:1.4;word-break:break-word}
+.toast-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0;line-height:1;flex-shrink:0}
+.toast-close:hover{color:var(--text)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* ── Alert filter tabs ── */
+.filter-tabs{display:flex;gap:4px;margin-bottom:8px}
+.ftab{
+  flex:1;padding:4px 0;font-size:.65rem;text-align:center;border-radius:5px;
+  border:1px solid var(--border);background:transparent;color:var(--muted);
+  cursor:pointer;transition:all .2s;font-weight:600;
+}
+.ftab.active-all    {background:rgba(0,201,255,.15);color:var(--accent);border-color:var(--accent)}
+.ftab.active-warning{background:rgba(245,158,11,.15);color:var(--warning);border-color:var(--warning)}
+.ftab.active-alert  {background:rgba(239,68,68,.15);color:var(--alert);border-color:var(--alert)}
+.ftab.active-critical{background:rgba(220,38,38,.2);color:#ff6b6b;border-color:#dc2626}
+.ftab:hover:not([class*='active']){border-color:var(--accent);color:var(--accent)}
+
+/* ── Sparkline ── */
+#sparkline-wrap{position:relative;height:36px;margin-bottom:6px;border-radius:6px;overflow:hidden;background:var(--panel2)}
+#sparkline-canvas{width:100%;height:100%;display:block}
+.spark-legend{display:flex;gap:10px;font-size:.62rem;color:var(--muted);margin-bottom:4px}
+.spark-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle}
+
+/* ── Export btn ── */
+.export-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;font-size:.68rem;
+  transition:all .2s;font-family:'Inter',sans-serif;
+}
+.export-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Health pill ── */
+.health-pill{display:flex;align-items:center;gap:5px;font-size:.68rem}
+.health-bar{width:60px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.health-fill{height:100%;border-radius:2px;transition:width .6s,background .6s}
+
+/* ── Layout ── */
+.main{
+  display:grid;
+  grid-template-columns:1fr 200px 300px;
+  grid-template-rows:1fr 1fr;
+  gap:10px;padding:10px;
+  height:calc(100vh - 52px);
+}
+.cell{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.cell-header{
+  display:flex;align-items:center;gap:7px;
+  padding:9px 14px;border-bottom:1px solid var(--border);
+  font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;
+  flex-shrink:0;
+}
+.cell-header .icon{font-size:.85rem}
+.cell-header .title{flex:1}
+.cell-body{flex:1;padding:12px;overflow-y:auto;min-height:0}
+.cell-body::-webkit-scrollbar{width:3px}
+.cell-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* Video spans 2 rows */
+#cell-video{grid-row:1/3;position:relative;background:#000;border-radius:12px;overflow:hidden}
+#cell-video img{width:100%;height:100%;object-fit:contain;display:block}
+.vid-overlay{position:absolute;top:10px;left:10px;display:flex;gap:6px;pointer-events:none}
+.vid-tag{
+  background:rgba(8,12,20,.8);border:1px solid var(--border);
+  border-radius:5px;padding:3px 9px;font-size:.68rem;backdrop-filter:blur(4px);
+}
+.vid-tag.live{border-color:var(--alert);color:var(--alert)}
+.zone-edit-btn{
+  position:absolute;bottom:12px;right:12px;
+  background:rgba(8,12,20,.8);border:1px solid var(--accent);
+  color:var(--accent);padding:5px 12px;border-radius:6px;
+  font-size:.72rem;cursor:pointer;transition:all .2s;backdrop-filter:blur(4px);
+}
+.zone-edit-btn:hover{background:var(--accent);color:#000}
+
+/* ── Objects list ── */
+.obj-item{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 9px;border-radius:8px;margin-bottom:5px;
+  background:var(--panel2);border:1px solid var(--border);
+  border-left:3px solid var(--muted);
+  font-size:.78rem;transition:border-color .3s;
+}
+.obj-item.normal  {border-left-color:var(--normal)}
+.obj-item.watch   {border-left-color:var(--watch)}
+.obj-item.warning {border-left-color:var(--warning)}
+.obj-item.alert,.obj-item.critical{border-left-color:var(--alert)}
+.obj-meta{flex:1;min-width:0}
+.obj-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.obj-id{font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.obj-role{font-weight:500;font-size:.78rem}
+.obj-bottom{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.action-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 7px;border-radius:4px;font-size:.66rem;font-weight:600;
+  background:rgba(99,102,241,.15);color:var(--watch);border:1px solid rgba(99,102,241,.3);
+}
+.action-chip.danger{background:rgba(239,68,68,.15);color:var(--alert);border-color:rgba(239,68,68,.3)}
+.action-chip.warn{background:rgba(245,158,11,.15);color:var(--warning);border-color:rgba(245,158,11,.3)}
+.conf-bar{height:2px;border-radius:1px;background:var(--border);width:50px;flex-shrink:0}
+.conf-fill{height:100%;border-radius:1px;background:var(--accent);transition:width .4s}
+.lvl-badge{
+  font-size:.62rem;padding:2px 6px;border-radius:3px;font-weight:700;white-space:nowrap;
+}
+.lvl-normal  {background:rgba(34,211,165,.12);color:var(--normal)}
+.lvl-watch   {background:rgba(167,139,250,.12);color:var(--watch)}
+.lvl-warning {background:rgba(245,158,11,.12);color:var(--warning)}
+.lvl-alert,.lvl-critical{background:rgba(239,68,68,.12);color:var(--alert)}
+.zone-tag{font-size:.62rem;color:var(--muted);font-family:var(--mono)}
+
+/* ── Action chart ── */
+#action-bars{display:flex;flex-direction:column;gap:7px}
+.abar-row{display:flex;align-items:center;gap:8px;font-size:.72rem}
+.abar-label{width:80px;display:flex;align-items:center;gap:5px;flex-shrink:0}
+.abar-label .aicon{font-size:.85rem}
+.abar-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.abar-fill{height:100%;border-radius:3px;transition:width .6s ease;min-width:2px}
+.abar-count{font-family:var(--mono);font-size:.68rem;color:var(--muted);width:24px;text-align:right;flex-shrink:0}
+
+/* ── Model status ── */
+.model-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:8px;margin-bottom:6px;
+  background:var(--panel2);border:1px solid var(--border);
+}
+.model-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.model-info{flex:1;min-width:0}
+.model-name{font-size:.78rem;font-weight:600}
+.model-detail{font-size:.65rem;color:var(--muted);margin-top:1px}
+.model-acc{font-family:var(--mono);font-size:.72rem;font-weight:600;flex-shrink:0}
+
+/* ── Events timeline ── */
+.evt-item{
+  display:flex;gap:10px;padding:6px 0;
+  border-bottom:1px solid var(--border);
+  font-size:.72rem;
+}
+.evt-item:last-child{border-bottom:none}
+.evt-left{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:36px}
+.evt-icon{font-size:.9rem}
+.evt-time{font-size:.6rem;color:var(--muted);font-family:var(--mono)}
+.evt-right{flex:1;min-width:0}
+.evt-reason{color:var(--text);line-height:1.4;margin-bottom:2px}
+.evt-meta{display:flex;gap:6px;flex-wrap:wrap}
+.evt-tag{
+  font-size:.6rem;padding:1px 5px;border-radius:3px;
+  background:var(--panel2);color:var(--muted);border:1px solid var(--border);
+}
+
+/* ── Stats grid ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-box{
+  background:var(--panel2);border:1px solid var(--border);
+  border-radius:9px;padding:10px 12px;text-align:center;
+}
+.stat-val{font-size:1.6rem;font-weight:700;color:var(--accent);font-family:var(--mono);line-height:1}
+.stat-lbl{font-size:.65rem;color:var(--muted);margin-top:4px}
+.stat-sub{font-size:.6rem;margin-top:2px}
+
+/* ── Source panel ── */
+.src-tabs{display:flex;gap:4px;margin-bottom:10px}
+.src-tab{
+  flex:1;padding:5px 0;font-size:.7rem;text-align:center;
+  border-radius:5px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;
+}
+.src-tab.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+.src-tab:hover:not(.active){border-color:var(--accent);color:var(--accent)}
+.src-panel{display:none;flex-direction:column;gap:7px}
+.src-panel.active{display:flex}
+.src-input{
+  background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);padding:6px 10px;font-size:.78rem;width:100%;
+  outline:none;transition:border-color .2s;font-family:'Inter',sans-serif;
+}
+.src-input:focus{border-color:var(--accent)}
+.src-btn{
+  padding:7px;border-radius:6px;border:none;cursor:pointer;
+  font-size:.78rem;font-weight:600;background:var(--accent);color:#000;
+  transition:all .2s;width:100%;
+}
+.src-btn:hover{opacity:.85;transform:translateY(-1px)}
+.src-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.drop-zone{
+  border:2px dashed var(--border);border-radius:8px;
+  padding:14px;text-align:center;cursor:pointer;
+  transition:all .2s;position:relative;
+}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(0,201,255,.04)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop-zone .dz-icon{font-size:1.5rem;margin-bottom:4px}
+.drop-zone .dz-text{font-size:.7rem;color:var(--muted)}
+.drop-zone .dz-name{font-size:.72rem;color:var(--accent);margin-top:3px;font-weight:600}
+.upload-progress{display:none}
+.upload-progress.show{display:block}
+.progress-bar{height:3px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .2s;width:0}
+.status-msg{font-size:.7rem;padding:4px 8px;border-radius:5px;display:none;margin-top:4px}
+.status-msg.ok  {display:block;background:rgba(34,211,165,.1);color:var(--normal);border:1px solid rgba(34,211,165,.2)}
+.status-msg.err {display:block;background:rgba(239,68,68,.1);color:var(--alert);border:1px solid rgba(239,68,68,.2)}
+.status-msg.info{display:block;background:rgba(0,201,255,.08);color:var(--accent);border:1px solid rgba(0,201,255,.2)}
+.src-badge{display:flex;align-items:center;gap:5px;font-size:.68rem;color:var(--muted);margin-bottom:8px}
+.src-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--normal)}
+
+/* ── Zone modal ── */
+.zone-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.zone-modal.open{display:flex}
+.zone-modal-inner{background:var(--panel);border:1px solid var(--border);border-radius:16px;width:min(96vw,1100px);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.zone-modal-header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);color:var(--accent);font-size:.88rem;font-weight:600}
+.zone-close-btn{background:transparent;border:1px solid var(--border);color:var(--muted);width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.zone-close-btn:hover{border-color:var(--alert);color:var(--alert)}
+.zone-modal-body{display:flex;overflow:hidden;flex:1}
+.zone-canvas-wrap{flex:1;position:relative;background:#000;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
+#zone-snapshot{max-width:100%;max-height:100%;display:block}
+#zone-canvas{position:absolute;cursor:crosshair;pointer-events:auto}
+.zone-canvas-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:var(--muted);font-size:.68rem;padding:3px 9px;border-radius:4px;white-space:nowrap;pointer-events:none}
+.zone-controls{width:270px;display:flex;flex-direction:column;border-left:1px solid var(--border);overflow-y:auto}
+.zone-form{padding:14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:5px}
+.zone-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.zone-input{background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 9px;font-size:.78rem;outline:none;transition:border-color .2s}
+.zone-input:focus{border-color:var(--accent)}
+.zone-type-btns{display:flex;gap:4px}
+.zone-type-btn{flex:1;padding:4px 0;font-size:.68rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;text-align:center}
+.zone-type-btn[data-type=allowed].active{background:rgba(34,211,165,.15);color:var(--normal);border-color:var(--normal)}
+.zone-type-btn[data-type=restricted].active{background:rgba(239,68,68,.15);color:var(--alert);border-color:var(--alert)}
+.zone-type-btn[data-type=monitored].active{background:rgba(167,139,250,.15);color:var(--watch);border-color:var(--watch)}
+.zone-type-btn:hover{border-color:var(--accent);color:var(--accent)}
+.zone-point-info{font-size:.68rem;padding:4px 8px;border-radius:5px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)}
+.zone-action-btn{flex:1;padding:4px 6px;font-size:.68rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s}
+.zone-action-btn:hover{border-color:var(--accent);color:var(--accent)}
+.zone-save-btn{padding:7px;border-radius:6px;border:none;cursor:pointer;background:var(--accent);color:#000;font-weight:700;font-size:.78rem;margin-top:3px;transition:all .2s}
+.zone-save-btn:hover{opacity:.85}
+.zone-list-panel{padding:12px;flex:1;overflow-y:auto}
+.zone-list-item{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:7px;margin-bottom:4px;background:var(--panel2);border:1px solid var(--border);font-size:.74rem}
+.zone-list-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.zone-list-name{flex:1}
+.zone-type-tag{font-size:.6rem;padding:1px 4px;border-radius:3px;background:var(--border);color:var(--muted);margin-left:3px}
+.zone-pts{font-size:.6rem;color:var(--muted);margin-left:3px}
+.zone-del-btn{background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:.78rem;padding:1px 4px;border-radius:3px;transition:all .2s}
+.zone-del-btn:hover{color:var(--alert)}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.animate-in{animation:slideIn .3s ease}
+
+/* ── Analytics Modal ── */
+.analytics-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.analytics-modal.open{display:flex}
+.analytics-inner{background:var(--panel);border:1px solid var(--border);border-radius:16px;width:min(96vw,900px);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.analytics-header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);color:var(--accent);font-size:.88rem;font-weight:600;flex-shrink:0}
+.analytics-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.atab{padding:9px 18px;font-size:.75rem;border:none;background:transparent;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;font-family:'Inter',sans-serif}
+.atab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.atab:hover:not(.active){color:var(--text)}
+.analytics-body{flex:1;overflow-y:auto;padding:16px;min-height:0}
+.analytics-body::-webkit-scrollbar{width:3px}
+.analytics-body::-webkit-scrollbar-thumb{background:var(--border)}
+.an-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.an-card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.an-val{font-size:1.5rem;font-weight:700;font-family:var(--mono);color:var(--accent)}
+.an-lbl{font-size:.65rem;color:var(--muted);margin-top:3px}
+#timeline-canvas-wrap{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px;height:140px}
+#timeline-canvas{width:100%;height:100%;display:block}
+.tl-legend{display:flex;gap:14px;font-size:.65rem;color:var(--muted);margin-bottom:6px}
+.tl-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle}
+.clip-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:var(--panel2);border:1px solid var(--border);font-size:.75rem}
+.clip-icon{font-size:1.2rem;flex-shrink:0}
+.clip-info{flex:1;min-width:0}
+.clip-name{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clip-meta{font-size:.65rem;color:var(--muted);margin-top:2px}
+.clip-btn{padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.68rem;transition:all .2s;font-family:'Inter',sans-serif}
+.clip-btn:hover{border-color:var(--accent);color:var(--accent)}
+.clip-del{padding:3px 7px;border-radius:5px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:.8rem;transition:color .2s}
+.clip-del:hover{color:var(--alert)}
+.tg-form{display:flex;flex-direction:column;gap:8px}
+.tg-row{display:flex;gap:6px;align-items:center}
+.tg-label{font-size:.7rem;color:var(--muted);min-width:90px;flex-shrink:0}
+.hdr-btn{padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.72rem;transition:all .2s;font-family:'Inter',sans-serif}
+.hdr-btn:hover{border-color:var(--accent);color:var(--accent)}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">&#127909;</div>
+    <div>
+      <h1>AI Security Camera</h1>
+      <span>RoleNet · ActionNet · ContextNet</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="hbadge"><span class="dot dot-live"></span><span>LIVE</span></div>
+    <div class="hbadge"><span id="src-label">...</span></div>
+    <div class="hbadge">FPS <span class="fps-val" id="fps">--</span></div>
+    <div class="hbadge"><span id="obj-count">0</span> objects</div>
+    <div class="hbadge health-pill">
+      <span style="color:var(--muted)">Pipeline</span>
+      <div class="health-bar"><div class="health-fill" id="health-fill" style="width:0%;background:var(--normal)"></div></div>
+      <span id="health-label" style="font-family:var(--mono);color:var(--normal)">--</span>
+    </div>
+    <button class="hdr-btn" onclick="openAnalytics()">&#128202; Analytics</button>
+    <button class="hdr-btn" onclick="openTelegramModal()">&#128338; Telegram</button>
+  </div>
+</header>
+
+<!-- ══ MAIN GRID ══ -->
+<div class="main">
+
+  <!-- Video (spans 2 rows) -->
+  <div id="cell-video">
+    <div class="vid-overlay">
+      <span class="vid-tag live">&#9679; LIVE</span>
+      <span class="vid-tag" id="mode-tag">&#129504; ActionNet GRU</span>
+    </div>
+    <img id="stream" src="/video_feed" alt="Camera Stream">
+    <button class="zone-edit-btn" onclick="openZoneEditor()">&#9874; Zones</button>
+  </div>
+
+  <!-- Detected Objects -->
+  <div class="cell" style="grid-column:2;grid-row:1">
+    <div class="cell-header">
+      <span class="icon">&#128101;</span>
+      <span class="title">Detected Objects</span>
+      <span id="obj-count-badge" style="font-family:var(--mono);color:var(--accent)">0</span>
+    </div>
+    <div class="cell-body" id="objects-list">
+      <div style="color:var(--muted);font-size:.75rem;text-align:center;margin-top:20px">Waiting...</div>
+    </div>
+  </div>
+
+  <!-- Action Distribution -->
+  <div class="cell" style="grid-column:2;grid-row:2">
+    <div class="cell-header">
+      <span class="icon">&#127939;</span>
+      <span class="title">Action Distribution</span>
+    </div>
+    <div class="cell-body" id="action-bars">
+    </div>
+  </div>
+
+  <!-- Stats + Source (top right) -->
+  <div class="cell" style="grid-column:3;grid-row:1;display:flex;flex-direction:column">
+    <div class="cell-header"><span class="icon">&#128202;</span><span class="title">Live Stats</span></div>
+    <div class="cell-body" style="display:flex;flex-direction:column;gap:10px">
+      <!-- Sparkline -->
+      <div>
+        <div class="spark-legend">
+          <span><span class="spark-dot" style="background:var(--accent)"></span>FPS</span>
+          <span><span class="spark-dot" style="background:var(--normal)"></span>People</span>
+        </div>
+        <div id="sparkline-wrap"><canvas id="sparkline-canvas"></canvas></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-val" id="s-people">0</div>
+          <div class="stat-lbl">People</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-alerts">0</div>
+          <div class="stat-lbl">Alerts</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-vehicles">0</div>
+          <div class="stat-lbl">Vehicles</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-total">0</div>
+          <div class="stat-lbl">Total Events</div>
+        </div>
+      </div>
+
+      <!-- Model Status -->
+      <div>
+        <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px">AI Models</div>
+        <div class="model-row">
+          <div class="model-dot" style="background:var(--normal)"></div>
+          <div class="model-info">
+            <div class="model-name">RoleNet V3</div>
+            <div class="model-detail">ConvNeXt-Tiny · 16 roles</div>
+          </div>
+          <div class="model-acc" style="color:var(--normal)">V3</div>
+        </div>
+        <div class="model-row">
+          <div class="model-dot" id="actionnet-dot" style="background:var(--muted)"></div>
+          <div class="model-info">
+            <div class="model-name">ActionNet GRU</div>
+            <div class="model-detail" id="actionnet-detail">8 actions · checking...</div>
+          </div>
+          <div class="model-acc" id="actionnet-acc" style="color:var(--muted)">--</div>
+        </div>
+        <div class="model-row">
+          <div class="model-dot" style="background:var(--normal)"></div>
+          <div class="model-info">
+            <div class="model-name">ContextNet</div>
+            <div class="model-detail">XGBoost · alert engine</div>
+          </div>
+          <div class="model-acc" style="color:var(--normal)">ML</div>
+        </div>
+      </div>
+
+      <!-- Source Control -->
+      <div>
+        <div class="src-badge"><span class="dot"></span><span id="src-label2">...</span></div>
+        <div class="src-tabs">
+          <button class="src-tab active" onclick="switchTab('webcam',this)">&#128247;</button>
+          <button class="src-tab" onclick="switchTab('upload',this)">&#128193;</button>
+          <button class="src-tab" onclick="switchTab('path',this)">&#128279;</button>
+        </div>
+        <div class="src-panel active" id="tab-webcam">
+          <select class="src-input" id="cam-index">
+            <option value="0">Camera 0</option>
+            <option value="1">Camera 1</option>
+            <option value="2">Camera 2</option>
+          </select>
+          <button class="src-btn" onclick="switchToWebcam()">&#9654; Webcam</button>
+          <div class="status-msg" id="cam-status"></div>
+        </div>
+        <div class="src-panel" id="tab-upload">
+          <div class="drop-zone" id="drop-zone">
+            <input type="file" id="video-file" accept="video/*" onchange="onFileSelected(event)">
+            <div class="dz-icon">&#127910;</div>
+            <div class="dz-text">Keo tha hoac click</div>
+            <div class="dz-name" id="dz-name"></div>
+          </div>
+          <div class="upload-progress" id="upload-progress">
+            <div style="font-size:.68rem;color:var(--muted)" id="upload-info">Uploading...</div>
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+          </div>
+          <button class="src-btn" id="upload-btn" onclick="uploadVideo()" disabled>&#11014; Upload &amp; Run</button>
+          <div class="status-msg" id="upload-status"></div>
+        </div>
+        <div class="src-panel" id="tab-path">
+          <input class="src-input" type="text" id="path-input" placeholder="path/to/video.mp4">
+          <button class="src-btn" onclick="switchToPath()">&#9654; Use File/URL</button>
+          <div class="status-msg" id="path-status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Events (bottom right) -->
+  <div class="cell" style="grid-column:3;grid-row:2">
+    <div class="cell-header">
+      <span class="icon">&#128680;</span>
+      <span class="title">Recent Alerts</span>
+      <span id="alert-count" style="font-family:var(--mono);color:var(--alert)">0</span>
+      <button class="export-btn" onclick="exportEvents()" title="Export CSV">&#128190; CSV</button>
+    </div>
+    <div class="cell-body" style="display:flex;flex-direction:column;padding:8px">
+      <div class="filter-tabs">
+        <button class="ftab active-all" id="ftab-all" onclick="setAlertFilter('all',this)">All</button>
+        <button class="ftab" id="ftab-warning" onclick="setAlertFilter('warning',this)">⚠ Warn</button>
+        <button class="ftab" id="ftab-alert" onclick="setAlertFilter('alert',this)">🚨 Alert</button>
+        <button class="ftab" id="ftab-critical" onclick="setAlertFilter('critical',this)">🔴 Crit</button>
+      </div>
+      <div style="flex:1;overflow-y:auto" id="events-list">
+        <div style="color:var(--muted);font-size:.75rem;text-align:center;margin-top:20px">No alerts yet...</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .main -->
+
+<!-- ══ TOAST CONTAINER ══ -->
+<div id="toast-container"></div>
+
+<!-- ══ ZONE EDITOR MODAL ══ -->
+<div class="zone-modal" id="zone-modal">
+  <div class="zone-modal-inner">
+    <div class="zone-modal-header">
+      <span>&#9874; Zone Editor &mdash; Click len video de ve polygon</span>
+      <button class="zone-close-btn" onclick="closeZoneEditor()">&#10005;</button>
+    </div>
+    <div class="zone-modal-body">
+      <div class="zone-canvas-wrap" id="zone-canvas-wrap">
+        <img id="zone-snapshot" alt="frame">
+        <canvas id="zone-canvas"></canvas>
+        <!-- Loading overlay -->
+        <div id="snap-loading" style="
+          display:none;position:absolute;inset:0;
+          background:rgba(8,12,20,.75);z-index:10;
+          align-items:center;justify-content:center;flex-direction:column;gap:10px;
+        ">
+          <div style="width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite"></div>
+          <span style="font-size:.72rem;color:var(--muted)">Dang chup anh...</span>
+        </div>
+        <div class="zone-canvas-hint">Click them diem &bull; Double-click / Enter de hoan tat &bull; Esc huy</div>
+        <button onclick="loadSnapshot()" title="Chup lai frame moi" style="
+          position:absolute;top:8px;right:8px;z-index:5;
+          background:rgba(8,12,20,.8);border:1px solid var(--border);
+          color:var(--muted);border-radius:6px;padding:4px 10px;
+          font-size:.68rem;cursor:pointer;transition:all .2s;
+          backdrop-filter:blur(4px);
+        " onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+           onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          &#8635; Chup lai
+        </button>
+      </div>
+      <div class="zone-controls">
+        <div class="zone-form">
+          <label class="zone-label">Ten zone</label>
+          <input class="zone-input" type="text" id="zone-name-input" placeholder="VD: entrance, restricted_area">
+          <label class="zone-label" style="margin-top:6px">Loai zone</label>
+          <div class="zone-type-btns">
+            <button class="zone-type-btn active" data-type="allowed" onclick="selectZoneType('allowed',this)">&#10003; Phep</button>
+            <button class="zone-type-btn" data-type="restricted" onclick="selectZoneType('restricted',this)">&#9888; Cam</button>
+            <button class="zone-type-btn" data-type="monitored" onclick="selectZoneType('monitored',this)">&#128065; GS</button>
+          </div>
+          <div class="zone-point-info" id="zone-point-info">Chua co diem nao</div>
+          <div style="display:flex;gap:5px;margin-top:6px">
+            <button class="zone-action-btn" onclick="undoLastPoint()">&#8592; Undo</button>
+            <button class="zone-action-btn" onclick="clearDrawing()">&#128465; Clear</button>
+          </div>
+          <button class="zone-save-btn" onclick="saveCurrentZone()">&#10003; Luu Zone</button>
+          <div class="status-msg" id="zone-save-msg"></div>
+        </div>
+        <div class="zone-list-panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+            <span style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Zones hien tai</span>
+            <div style="display:flex;gap:4px">
+              <button class="zone-action-btn" onclick="clearAllZones()" style="color:var(--alert);border-color:var(--alert)" title="Xoa toan bo zones">&#128465; Xoa het</button>
+              <button class="zone-action-btn" onclick="applyAllZones()" style="background:var(--accent);color:#000;border-color:var(--accent)">&#9654; Apply All</button>
+            </div>
+          </div>
+          <div id="zone-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ANALYTICS MODAL ══ -->
+<div class="analytics-modal" id="analytics-modal">
+  <div class="analytics-inner">
+    <div class="analytics-header">
+      <span>&#128202; Analytics &amp; Recordings</span>
+      <button class="zone-close-btn" onclick="closeAnalytics()">&#10005;</button>
+    </div>
+    <div class="analytics-tabs">
+      <button class="atab active" id="atab-overview" onclick="switchAnalyticsTab('overview',this)">&#128200; Overview</button>
+      <button class="atab" id="atab-clips" onclick="switchAnalyticsTab('clips',this)">&#127909; Recordings</button>
+      <button class="atab" id="atab-telegram" onclick="switchAnalyticsTab('telegram',this)">&#128338; Telegram</button>
+      <button class="atab" id="atab-recorder" onclick="switchAnalyticsTab('recorder',this)">&#9898; Recorder</button>
+    </div>
+    <div class="analytics-body" id="analytics-body">
+      <div style="color:var(--muted);text-align:center;padding:30px">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ SPARKLINE ══
+const SPARK_MAX = 60;
+const fpsHistory = [];
+const peopleHistory = [];
+
+function pushSparkData(fps, people) {
+  fpsHistory.push(fps);
+  peopleHistory.push(people);
+  if (fpsHistory.length > SPARK_MAX) { fpsHistory.shift(); peopleHistory.shift(); }
+  drawSparkline();
+}
+
+function drawSparkline() {
+  const canvas = document.getElementById('sparkline-canvas');
+  if (!canvas) return;
+  const wrap = document.getElementById('sparkline-wrap');
+  canvas.width = wrap.clientWidth; canvas.height = wrap.clientHeight;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  function drawLine(data, color, maxVal) {
+    if (data.length < 2) return;
+    const step = W / (SPARK_MAX - 1);
+    ctx.beginPath();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+    data.forEach((v, i) => {
+      const x = i * step;
+      const y = H - (v / maxVal) * (H - 4) - 2;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    // fill area
+    ctx.lineTo((data.length-1)*step, H); ctx.lineTo(0, H); ctx.closePath();
+    ctx.fillStyle = color.replace(')', ',.08)').replace('rgb','rgba');
+    ctx.fill();
+  }
+  const maxFps = Math.max(...fpsHistory, 30);
+  const maxPpl = Math.max(...peopleHistory, 5);
+  drawLine(fpsHistory,    'rgb(0,201,255)',    maxFps);
+  drawLine(peopleHistory, 'rgb(34,211,165)',   maxPpl);
+}
+
+// ══ TOAST ══
+const seenAlertIds = new Set();
+function showToast(evt) {
+  const lvlIcon  = {warning:'⚠️',alert:'🚨',critical:'🔴',watch:'👁'};
+  const container = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (evt.level || '');
+  const dt = (evt.datetime || '').slice(11, 19);
+  t.innerHTML = `<span class="toast-icon">${lvlIcon[evt.level]||'🔔'}</span>
+    <div class="toast-body"><div class="toast-title">${(evt.level||'').toUpperCase()} ${dt}</div>
+    <div class="toast-msg">${evt.reason||''}</div></div>
+    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+  container.prepend(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(20px)'; setTimeout(()=>t.remove(),400); }, 6000);
+}
+
+// ══ ALERT FILTER ══
+let currentFilter = 'all';
+let allEventsCache = [];
+function setAlertFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.ftab').forEach(b => b.className = 'ftab');
+  btn.className = 'ftab active-' + f;
+  renderAlertList(allEventsCache);
+}
+function renderAlertList(evts) {
+  allEventsCache = evts;
+  const filtered = currentFilter === 'all' ? evts : evts.filter(e => e.level === currentFilter);
+  document.getElementById('alert-count').textContent = filtered.length;
+  const el = document.getElementById('events-list');
+  if (filtered.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.75rem;text-align:center;margin-top:20px">No alerts...</div>';
+    return;
+  }
+  const lvlIcon = {warning:'⚠',alert:'🚨',critical:'🔴',watch:'👁'};
+  el.innerHTML = filtered.slice().reverse().map(e => {
+    const icon = lvlIcon[e.level] || '•';
+    const dt = (e.datetime || '').slice(11, 19);
+    const action = e.action || 'unknown';
+    const actionMeta = ACTION_META[action] || ACTION_META.unknown;
+    const aConf = e.action_confidence ? Math.round(e.action_confidence * 100) : 0;
+    const actionChip = (action && action !== 'unknown')
+      ? `<span class="action-chip ${actionMeta.cls}" style="font-size:.6rem">${actionMeta.icon} ${action.replace('_',' ')} ${aConf}%</span>`
+      : '';
+    const role = e.object_role || e.role || '';
+    const zone = e.zone_name || '';
+    return '<div class="evt-item animate-in">'
+      + '<div class="evt-left"><span class="evt-icon">' + icon + '</span><span class="evt-time">' + dt + '</span></div>'
+      + '<div class="evt-right"><div class="evt-reason">' + (e.reason||'') + '</div>'
+      + '<div class="evt-meta">'
+      + (role ? '<span class="evt-tag">' + role + '</span>' : '')
+      + (zone ? '<span class="evt-tag">' + zone + '</span>' : '')
+      + actionChip
+      + '</div></div></div>';
+  }).join('');
+}
+
+// ══ EXPORT CSV ══
+function exportEvents() {
+  if (!allEventsCache.length) { alert('No events to export.'); return; }
+  const header = 'datetime,level,reason,role,zone,action,action_confidence\n';
+  const rows = allEventsCache.map(e =>
+    [e.datetime,e.level,('"'+(e.reason||'').replace(/"/g,'""')+'"'),
+     e.object_role||e.role,e.zone_name,e.action,e.action_confidence||0].join(',')
+  ).join('\n');
+  const blob = new Blob([header+rows], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'alerts_' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.csv';
+  a.click();
+}
+
+// ══ CONFIG ══
+const ACTION_META = {
+  standing:    {icon:'&#129485;', color:'var(--normal)',  cls:''},
+  walking:     {icon:'&#128694;', color:'var(--accent)',  cls:''},
+  running:     {icon:'&#127939;', color:'var(--watch)',   cls:'warn'},
+  falling:     {icon:'&#128680;', color:'var(--alert)',   cls:'danger'},
+  climbing:    {icon:'&#129495;', color:'var(--warning)', cls:'warn'},
+  fighting:    {icon:'&#9888;',   color:'var(--alert)',   cls:'danger'},
+  raising_hand:{icon:'&#128587;', color:'var(--watch)',   cls:'warn'},
+  gathering:   {icon:'&#128101;', color:'var(--watch)',   cls:'warn'},
+  unknown:     {icon:'&#10067;',  color:'var(--muted)',   cls:''},
+};
+const ACTIONS = ['standing','walking','running','falling','climbing','fighting','raising_hand','gathering'];
+const ACTION_COLORS = ['#22d3a5','#00c9ff','#a78bfa','#ef4444','#f59e0b','#ef4444','#a78bfa','#a78bfa'];
+let actionCounts = {};
+ACTIONS.forEach(a => actionCounts[a] = 0);
+
+// ══ SOURCE SWITCHER ══
+function switchTab(name, btn) {
+  document.querySelectorAll('.src-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.src-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'status-msg ' + type;
+  setTimeout(() => { el.className = 'status-msg'; }, 5000);
+}
+async function switchToWebcam() {
+  const idx = parseInt(document.getElementById('cam-index').value);
+  showMsg('cam-status','Connecting...','info');
+  try {
+    const r = await fetch('/api/source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:idx})});
+    if (!r.ok) throw new Error((await r.json()).detail);
+    showMsg('cam-status','OK Webcam ' + idx,'ok');
+    reloadStream();
+  } catch(e) { showMsg('cam-status','ERR: ' + e.message,'err'); }
+}
+let selectedFile = null;
+function onFileSelected(e) {
+  selectedFile = e.target.files[0];
+  if (selectedFile) {
+    document.getElementById('dz-name').textContent = selectedFile.name;
+    document.getElementById('upload-btn').disabled = false;
+  }
+}
+async function uploadVideo() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  const progress = document.getElementById('upload-progress');
+  const fill = document.getElementById('progress-fill');
+  const info = document.getElementById('upload-info');
+  progress.classList.add('show');
+  const form = new FormData();
+  form.append('file', selectedFile);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/upload');
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round(e.loaded / e.total * 100);
+      fill.style.width = pct + '%';
+      info.textContent = 'Uploading... ' + pct + '%';
+    }
+  };
+  xhr.onload = () => {
+    progress.classList.remove('show');
+    btn.disabled = false;
+    fill.style.width = '0%';
+    if (xhr.status === 200) {
+      const d = JSON.parse(xhr.responseText);
+      showMsg('upload-status', 'OK ' + d.filename, 'ok');
+      reloadStream();
+    } else {
+      const d = JSON.parse(xhr.responseText);
+      showMsg('upload-status', 'ERR: ' + (d.detail||'unknown'), 'err');
+    }
+  };
+  xhr.onerror = () => { progress.classList.remove('show'); btn.disabled = false; showMsg('upload-status','Network error','err'); };
+  xhr.send(form);
+}
+async function switchToPath() {
+  const path = document.getElementById('path-input').value.trim();
+  if (!path) { showMsg('path-status','Enter path first','err'); return; }
+  showMsg('path-status','Connecting...','info');
+  try {
+    const r = await fetch('/api/source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:path})});
+    if (!r.ok) throw new Error((await r.json()).detail);
+    showMsg('path-status','OK: ' + path,'ok');
+    reloadStream();
+  } catch(e) { showMsg('path-status','ERR: ' + e.message,'err'); }
+}
+function reloadStream() {
+  document.getElementById('stream').src = '/video_feed?' + Date.now();
+}
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) { selectedFile = f; document.getElementById('dz-name').textContent = f.name; document.getElementById('upload-btn').disabled = false; }
+});
+
+// ══ ACTION BARS ══
+function renderActionBars() {
+  const max = Math.max(...Object.values(actionCounts), 1);
+  const el = document.getElementById('action-bars');
+  el.innerHTML = ACTIONS.map((a, i) => {
+    const meta = ACTION_META[a] || {icon:'?',color:'var(--muted)',cls:''};
+    const count = actionCounts[a] || 0;
+    const pct = Math.round(count / max * 100);
+    return '<div class="abar-row">'
+      + '<div class="abar-label"><span class="aicon">' + meta.icon + '</span><span>' + a.replace('_',' ') + '</span></div>'
+      + '<div class="abar-track"><div class="abar-fill" style="width:' + pct + '%;background:' + ACTION_COLORS[i] + '"></div></div>'
+      + '<div class="abar-count">' + count + '</div>'
+      + '</div>';
+  }).join('');
+}
+renderActionBars();
+
+// ══ MAIN POLLING ══
+async function fetchData() {
+  try {
+    // Source
+    const rs = await fetch('/api/source');
+    if (rs.ok) {
+      const ds = await rs.json();
+      const lbl = ds.label || ds.type;
+      document.getElementById('src-label').textContent = lbl;
+      document.getElementById('src-label2').textContent = lbl;
+    }
+
+    // Objects
+    const r1 = await fetch('/api/objects');
+    if (!r1.ok) return;
+    const d1 = await r1.json();
+
+    const fps = d1.fps || 0;
+    document.getElementById('fps').textContent = fps.toFixed(1);
+    const objs = d1.objects || [];
+    const persons   = objs.filter(o => o.category === 'person');
+    const vehicles  = objs.filter(o => o.category === 'vehicle');
+    const warnings  = objs.filter(o => ['warning','alert','critical'].includes(o.alert_level));
+
+    document.getElementById('s-people').textContent   = persons.length;
+    document.getElementById('s-vehicles').textContent = vehicles.length;
+    document.getElementById('s-alerts').textContent   = warnings.length;
+    document.getElementById('obj-count').textContent  = objs.length;
+    document.getElementById('obj-count-badge').textContent = objs.length;
+
+    // Sparkline
+    pushSparkData(fps, persons.length);
+
+    // Health pill
+    const hFill = document.getElementById('health-fill');
+    const hLabel = document.getElementById('health-label');
+    const fpsNorm = Math.min(fps / 30 * 100, 100);
+    hFill.style.width = fpsNorm + '%';
+    hFill.style.background = fps >= 20 ? 'var(--normal)' : fps >= 10 ? 'var(--warning)' : 'var(--alert)';
+    hLabel.textContent = fps.toFixed(0);
+    hLabel.style.color = fps >= 20 ? 'var(--normal)' : fps >= 10 ? 'var(--warning)' : 'var(--alert)';
+
+    // Reset action counts
+    ACTIONS.forEach(a => actionCounts[a] = 0);
+
+    // Render objects
+    const listEl = document.getElementById('objects-list');
+    if (objs.length === 0) {
+      listEl.innerHTML = '<div style="color:var(--muted);font-size:.75rem;text-align:center;margin-top:20px">No objects detected</div>';
+    } else {
+      listEl.innerHTML = objs.map(o => {
+        const lvl = o.alert_level || 'normal';
+        const action = o.action || 'unknown';
+        const meta = ACTION_META[action] || ACTION_META.unknown;
+        const conf = Math.round((o.action_confidence || 0) * 100);
+        const role = o.role_display || o.role || '';
+        const icon = o.role_icon || '';
+        const zone = o.zone_name || '';
+
+        // Count action
+        if (ACTIONS.includes(action)) actionCounts[action]++;
+
+        return '<div class="obj-item animate-in ' + lvl + '">'
+          + '<div class="obj-meta">'
+          +   '<div class="obj-top">'
+          +     '<span class="obj-id">#' + o.track_id + '</span>'
+          +     '<span class="obj-role">' + icon + ' ' + role + '</span>'
+          +     '<span class="lvl-badge lvl-' + lvl + '">' + lvl.toUpperCase() + '</span>'
+          +   '</div>'
+          +   '<div class="obj-bottom">'
+          +     '<span class="action-chip ' + meta.cls + '">' + meta.icon + ' ' + action.replace('_',' ') + '</span>'
+          +     '<div class="conf-bar"><div class="conf-fill" style="width:' + conf + '%"></div></div>'
+          +     '<span style="font-size:.62rem;color:var(--muted);font-family:var(--mono)">' + conf + '%</span>'
+          +     (zone ? '<span class="zone-tag">' + zone + '</span>' : '')
+          +   '</div>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+    }
+    renderActionBars();
+
+    // Stats total
+    const r2 = await fetch('/api/stats');
+    if (r2.ok) {
+      const d2 = await r2.json();
+      document.getElementById('s-total').textContent = d2.total || 0;
+    }
+
+    // Events — with toast for new ones
+    const r3 = await fetch('/api/events?limit=30');
+    if (r3.ok) {
+      const d3 = await r3.json();
+      const evts = d3.events || [];
+      // toast new events
+      evts.forEach(e => {
+        const uid = (e.datetime||'') + (e.reason||'');
+        if (!seenAlertIds.has(uid) && seenAlertIds.size > 0) showToast(e);
+        seenAlertIds.add(uid);
+      });
+      renderAlertList(evts);
+    }
+
+    // ActionNet status
+    try {
+      const ra = await fetch('/api/status');
+      if (ra.ok) {
+        const da = await ra.json();
+        if (da.action_mode) {
+          const dot = document.getElementById('actionnet-dot');
+          const det = document.getElementById('actionnet-detail');
+          const acc = document.getElementById('actionnet-acc');
+          if (da.action_mode === 'ml_actionnet_gru') {
+            dot.style.background = 'var(--normal)';
+            det.textContent = '8 actions · GRU · CPU';
+            acc.textContent = '95%'; acc.style.color = 'var(--normal)';
+            document.getElementById('mode-tag').innerHTML = '&#129504; ActionNet GRU';
+          } else {
+            dot.style.background = 'var(--warning)';
+            det.textContent = '8 actions · Rule-based';
+            acc.textContent = 'RULE'; acc.style.color = 'var(--warning)';
+          }
+        }
+      }
+    } catch(_) {}
+
+  } catch(err) { console.warn('Poll error:', err); }
+}
+
+setInterval(fetchData, 1500);
+fetchData();
+
+// ══ ZONE EDITOR ══
+const FRAME_W = 640, FRAME_H = 480;
+let zonePoints = [], pendingZones = [], zoneType = 'allowed';
+const ZONE_COLORS = {
+  allowed    : {stroke:'#22d3a5', fill:'rgba(34,211,165,0.18)'},
+  restricted : {stroke:'#ef4444', fill:'rgba(239,68,68,0.18)'},
+  monitored  : {stroke:'#a78bfa', fill:'rgba(167,139,250,0.18)'},
+};
+const ZONE_BGR = {allowed:[0,200,0],restricted:[0,0,220],monitored:[220,180,0]};
+
+async function loadSnapshot() {
+  const snap    = document.getElementById('zone-snapshot');
+  const loading = document.getElementById('snap-loading');
+
+  // Hien thi loading spinner
+  loading.style.display = 'flex';
+
+  // Thu toi da 5 lan neu chua co frame (pipeline moi khoi dong)
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      // Fetch /api/snapshot voi cache-bust query
+      const resp = await fetch('/api/snapshot?t=' + Date.now());
+      if (!resp.ok) {
+        if (attempt < 4) { await new Promise(r => setTimeout(r, 600)); continue; }
+        throw new Error('Pipeline chua san sang (status ' + resp.status + ')');
+      }
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+
+      // Gan vao <img> va doi cho load xong
+      await new Promise((resolve, reject) => {
+        snap.onload  = () => { resolve(); };
+        snap.onerror = () => reject(new Error('Load anh that bai'));
+        snap.src = url;
+      });
+
+      loading.style.display = 'none';
+      resizeCanvas();
+      return;  // Thanh cong
+    } catch (err) {
+      if (attempt < 4) {
+        await new Promise(r => setTimeout(r, 600));
+      } else {
+        loading.style.display = 'none';
+        showMsg('zone-save-msg', '\u274C ' + err.message, 'err');
+      }
+    }
+  }
+}
+
+async function openZoneEditor() {
+  // Load danh sach zones hien tai
+  const r = await fetch('/api/zones');
+  const d = await r.json();
+  pendingZones = d.zones || [];
+  zonePoints   = [];
+  renderZoneList();
+  document.getElementById('zone-modal').classList.add('open');
+  updatePointInfo();
+
+  // Load snapshot (anh tinh, khong phai MJPEG stream)
+  await loadSnapshot();
+}
+function closeZoneEditor() {
+  document.getElementById('zone-modal').classList.remove('open');
+  zonePoints = [];
+}
+function resizeCanvas() {
+  const snap   = document.getElementById('zone-snapshot');
+  const canvas = document.getElementById('zone-canvas');
+  const wrap   = document.getElementById('zone-canvas-wrap');
+
+  // Canvas intrinsic size = frame pixel space (for coordinate mapping)
+  canvas.width  = snap.naturalWidth  || FRAME_W;
+  canvas.height = snap.naturalHeight || FRAME_H;
+
+  // Overlay canvas EXACTLY on top of the rendered image area
+  // (accounts for letterbox gaps when container aspect ratio != image aspect ratio)
+  const wrapRect = wrap.getBoundingClientRect();
+  const snapRect = snap.getBoundingClientRect();
+  canvas.style.left   = (snapRect.left - wrapRect.left) + 'px';
+  canvas.style.top    = (snapRect.top  - wrapRect.top)  + 'px';
+  canvas.style.width  = snapRect.width  + 'px';
+  canvas.style.height = snapRect.height + 'px';
+  canvas.style.right  = 'auto';
+  canvas.style.bottom = 'auto';
+
+  redrawCanvas();
+}
+function selectZoneType(type, btn) {
+  zoneType = type;
+  document.querySelectorAll('.zone-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  redrawCanvas();
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const canvas = document.getElementById('zone-canvas');
+  canvas.addEventListener('click', e => {
+    if (!document.getElementById('zone-modal').classList.contains('open')) return;
+
+    // Canvas now overlays exactly on the image, so canvasRect == image area.
+    // Click position relative to canvas top-left = image top-left
+    const canvasRect = canvas.getBoundingClientRect();
+    const relX = e.clientX - canvasRect.left;
+    const relY = e.clientY - canvasRect.top;
+
+    // Reject clicks outside the canvas/image area (safety guard)
+    if (relX < 0 || relY < 0 || relX > canvasRect.width || relY > canvasRect.height) return;
+
+    // Scale from CSS display pixels → frame pixel space (canvas intrinsic size)
+    const scaleX = (canvas.width  || FRAME_W) / canvasRect.width;
+    const scaleY = (canvas.height || FRAME_H) / canvasRect.height;
+    zonePoints.push({x: Math.round(relX * scaleX), y: Math.round(relY * scaleY)});
+    updatePointInfo(); redrawCanvas();
+  });
+  canvas.addEventListener('dblclick', () => { if (zonePoints.length >= 3) finalizeZone(); });
+
+  window.addEventListener('resize', () => {
+    if (document.getElementById('zone-modal').classList.contains('open')) resizeCanvas();
+  });
+});
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('zone-modal').classList.contains('open')) return;
+  if (e.key === 'Enter' && zonePoints.length >= 3) finalizeZone();
+  if (e.key === 'Escape') clearDrawing();
+  if (e.key === 'z' && (e.ctrlKey || e.metaKey)) undoLastPoint();
+});
+function undoLastPoint() { zonePoints.pop(); updatePointInfo(); redrawCanvas(); }
+function clearDrawing()  { zonePoints = []; updatePointInfo(); redrawCanvas(); }
+function updatePointInfo() {
+  const el = document.getElementById('zone-point-info');
+  const n = zonePoints.length;
+  if (n === 0)      { el.textContent = 'Click vao video de bat dau'; el.style.color = 'var(--muted)'; }
+  else if (n < 3)   { el.textContent = n + ' diem — can ' + (3-n) + ' nua'; el.style.color = 'var(--warning)'; }
+  else              { el.textContent = n + ' diem — Enter de hoan tat'; el.style.color = 'var(--normal)'; }
+}
+function redrawCanvas() {
+  const canvas = document.getElementById('zone-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  pendingZones.forEach(z => {
+    const col = ZONE_COLORS[z.type] || ZONE_COLORS.allowed;
+    drawPolygon(ctx, z.polygon.map(p => ({x:p[0],y:p[1]})), col.stroke, col.fill, z.name, z.type);
+  });
+  if (zonePoints.length > 0) {
+    const col = ZONE_COLORS[zoneType];
+    ctx.strokeStyle = col.stroke; ctx.fillStyle = col.fill;
+    ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+    ctx.beginPath(); ctx.moveTo(zonePoints[0].x, zonePoints[0].y);
+    zonePoints.forEach(p => ctx.lineTo(p.x, p.y));
+    if (zonePoints.length >= 3) { ctx.closePath(); ctx.fill(); }
+    ctx.stroke(); ctx.setLineDash([]);
+    zonePoints.forEach((p, i) => {
+      ctx.fillStyle = col.stroke; ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(i+1, p.x+7, p.y-4);
+    });
+  }
+}
+function drawPolygon(ctx, points, stroke, fill, name, type) {
+  if (points.length < 2) return;
+  const icons = {allowed:'✓', restricted:'⚠', monitored:'◉'};
+  ctx.fillStyle = fill; ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  const cx = points.reduce((s,p)=>s+p.x,0)/points.length;
+  const cy = points.reduce((s,p)=>s+p.y,0)/points.length;
+  ctx.fillStyle = stroke; ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center'; ctx.fillText((icons[type]||'') + ' ' + name, cx, cy);
+  ctx.textAlign = 'left';
+}
+function finalizeZone() {
+  if (zonePoints.length < 3) return;
+  const zoneName = (document.getElementById('zone-name-input').value.trim() || 'zone_' + (pendingZones.length+1)).replace(/\s+/g,'_');
+  pendingZones.push({name:zoneName, type:zoneType, polygon:zonePoints.map(p=>[p.x,p.y]), color:ZONE_BGR[zoneType]||[0,200,0]});
+  zonePoints = [];
+  document.getElementById('zone-name-input').value = '';
+  renderZoneList(); updatePointInfo(); redrawCanvas();
+  showMsg('zone-save-msg','Zone "' + zoneName + '" added!','ok');
+}
+function saveCurrentZone() {
+  if (zonePoints.length >= 3) { finalizeZone(); return; }
+  showMsg('zone-save-msg','Need at least 3 points','err');
+}
+async function applyAllZones() {
+  try {
+    const r = await fetch('/api/zones',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({zones:pendingZones})});
+    if (!r.ok) throw new Error((await r.json()).detail);
+    showMsg('zone-save-msg','\u2705 Saved ' + pendingZones.length + ' zones to pipeline & file!','ok');
+    setTimeout(closeZoneEditor, 1400);
+  } catch(e) { showMsg('zone-save-msg','\u274C Error: ' + e.message,'err'); }
+}
+async function clearAllZones() {
+  if (!confirm('Xac nhan xoa TOAN BO zones? (Xoa ca file luu tru, khong the hoi phuc)')) return;
+  try {
+    const r = await fetch('/api/zones', {method:'DELETE'});
+    if (!r.ok) throw new Error((await r.json()).detail);
+    pendingZones = [];
+    renderZoneList();
+    redrawCanvas();
+    showMsg('zone-save-msg','\u2705 Da xoa toan bo zones!','ok');
+  } catch(e) { showMsg('zone-save-msg','\u274C Error: ' + e.message,'err'); }
+}
+function renderZoneList() {
+  const el = document.getElementById('zone-list');
+  if (pendingZones.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.72rem;text-align:center;padding:10px">No zones</div>';
+    return;
+  }
+  el.innerHTML = pendingZones.map((z, i) => {
+    const col = ZONE_COLORS[z.type] || ZONE_COLORS.allowed;
+    const lbls = {allowed:'Allowed',restricted:'Restricted',monitored:'Monitored'};
+    return '<div class="zone-list-item">'
+      + '<span class="zone-list-dot" style="background:' + col.stroke + '"></span>'
+      + '<span class="zone-list-name"><b>' + z.name + '</b>'
+      +   '<span class="zone-type-tag">' + (lbls[z.type]||z.type) + '</span>'
+      +   '<span class="zone-pts">' + z.polygon.length + 'pts</span>'
+      + '</span>'
+      + '<button class="zone-del-btn" onclick="deleteZone(' + i + ')">&#128465;</button>'
+      + '</div>';
+  }).join('');
+}
+function deleteZone(idx) { pendingZones.splice(idx,1); renderZoneList(); redrawCanvas(); }
+
+// ══ ANALYTICS MODAL ══
+let currentAnalyticsTab = 'overview';
+
+function openAnalytics() {
+  document.getElementById('analytics-modal').classList.add('open');
+  loadAnalyticsTab('overview');
+}
+function openTelegramModal() {
+  document.getElementById('analytics-modal').classList.add('open');
+  loadAnalyticsTab('telegram');
+  document.querySelectorAll('.atab').forEach(b => b.classList.remove('active'));
+  document.getElementById('atab-telegram').classList.add('active');
+}
+function closeAnalytics() {
+  document.getElementById('analytics-modal').classList.remove('open');
+}
+function switchAnalyticsTab(tab, btn) {
+  currentAnalyticsTab = tab;
+  document.querySelectorAll('.atab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadAnalyticsTab(tab);
+}
+
+async function loadAnalyticsTab(tab) {
+  const body = document.getElementById('analytics-body');
+  body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:30px">&#9203; Loading...</div>';
+  try {
+    if (tab === 'overview')  await renderOverviewTab(body);
+    if (tab === 'clips')     await renderClipsTab(body);
+    if (tab === 'telegram')  await renderTelegramTab(body);
+    if (tab === 'recorder')  await renderRecorderTab(body);
+  } catch(e) {
+    body.innerHTML = '<div style="color:var(--alert);padding:20px">Error: ' + e.message + '</div>';
+  }
+}
+
+// ── Overview Tab ──
+async function renderOverviewTab(body) {
+  const [rs, rt] = await Promise.all([
+    fetch('/api/analytics/summary'),
+    fetch('/api/analytics/timeline?hours=24'),
+  ]);
+  const stats    = await rs.json();
+  const timeline = await rt.json();
+  const byLvl    = stats.by_level || {};
+  const byRole   = stats.by_role  || {};
+  const byAction = stats.by_action|| {};
+  const recs     = stats.recordings || {};
+
+  body.innerHTML = `
+    <div class="an-grid">
+      <div class="an-card"><div class="an-val">${stats.total||0}</div><div class="an-lbl">Total Events</div></div>
+      <div class="an-card"><div class="an-val" style="color:var(--alert)">${(byLvl.alert||0)+(byLvl.critical||0)}</div><div class="an-lbl">Alert+Critical</div></div>
+      <div class="an-card"><div class="an-val" style="color:var(--warning)">${byLvl.warning||0}</div><div class="an-lbl">Warnings</div></div>
+      <div class="an-card"><div class="an-val" style="color:var(--normal)">${recs.total_clips||0}</div><div class="an-lbl">Video Clips</div></div>
+      <div class="an-card"><div class="an-val">${stats.duration_hours||0}h</div><div class="an-lbl">Duration Logged</div></div>
+      <div class="an-card"><div class="an-val" style="font-size:.9rem">${stats.last_event_at?stats.last_event_at.slice(11,19):'--'}</div><div class="an-lbl">Last Event</div></div>
+    </div>
+    <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Events Timeline (24h)</div>
+    <div class="tl-legend">
+      <span><span class="tl-dot" style="background:var(--warning)"></span>Warning</span>
+      <span><span class="tl-dot" style="background:var(--alert)"></span>Alert</span>
+      <span><span class="tl-dot" style="background:#dc2626"></span>Critical</span>
+    </div>
+    <div id="timeline-canvas-wrap"><canvas id="timeline-canvas" height="80"></canvas></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+      <div>
+        <div style="font-size:.7rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">Top Roles</div>
+        ${Object.entries(byRole).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([r,c])=>`
+          <div style="display:flex;justify-content:space-between;font-size:.72rem;padding:3px 0;border-bottom:1px solid var(--border)">
+            <span>${r}</span><span style="font-family:var(--mono);color:var(--accent)">${c}</span>
+          </div>`).join('')||'<div style="color:var(--muted);font-size:.72rem">No data</div>'}
+      </div>
+      <div>
+        <div style="font-size:.7rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">Top Actions</div>
+        ${Object.entries(byAction).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([a,c])=>`
+          <div style="display:flex;justify-content:space-between;font-size:.72rem;padding:3px 0;border-bottom:1px solid var(--border)">
+            <span>${a}</span><span style="font-family:var(--mono);color:var(--accent)">${c}</span>
+          </div>`).join('')||'<div style="color:var(--muted);font-size:.72rem">No data</div>'}
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="clip-btn" onclick="window.open('/api/analytics/export')">&#128190; Export JSON</button>
+      <button class="clip-btn" onclick="exportEventsCSV()">&#128190; Export CSV</button>
+    </div>`;
+  drawTimelineChart(timeline.buckets || []);
+}
+
+let myTimelineChart = null;
+
+function drawTimelineChart(buckets) {
+  const canvas = document.getElementById('timeline-canvas');
+  if (!canvas) return;
+
+  if (myTimelineChart) {
+    myTimelineChart.destroy();
+    myTimelineChart = null;
+  }
+
+  if (buckets.length === 0) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'var(--muted)';
+    ctx.font = '12px Inter';
+    ctx.fillText('Chưa có dữ liệu timeline', canvas.width/2 - 60, canvas.height/2);
+    return;
+  }
+
+  const labels = buckets.map(b => b.time.slice(11, 16));
+  const warnings = buckets.map(b => b.warning || 0);
+  const alerts = buckets.map(b => b.alert || 0);
+  const criticals = buckets.map(b => b.critical || 0);
+  const totals = buckets.map(b => b.total || 0);
+
+  const ctx = canvas.getContext('2d');
+  myTimelineChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Critical',
+          data: criticals,
+          backgroundColor: '#dc2626',
+          borderRadius: 3,
+        },
+        {
+          label: 'Alert',
+          data: alerts,
+          backgroundColor: '#ef4444',
+          borderRadius: 3,
+        },
+        {
+          label: 'Warning',
+          data: warnings,
+          backgroundColor: '#f59e0b',
+          borderRadius: 3,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d1117',
+          titleColor: '#00c9ff',
+          bodyColor: '#e2e8f0',
+          borderColor: '#1c2a3a',
+          borderWidth: 1,
+          font: { family: 'Inter' },
+          callbacks: {
+            footer: (tooltipItems) => {
+              const idx = tooltipItems[0].dataIndex;
+              return `Tổng cộng: ${totals[idx]}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { display: false },
+          ticks: {
+            color: '#4b6280',
+            font: { size: 9, family: 'Inter' }
+          }
+        },
+        y: {
+          stacked: true,
+          grid: {
+            color: 'rgba(28, 42, 58, 0.3)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#4b6280',
+            font: { size: 9, family: 'JetBrains Mono' },
+            stepSize: 1
+          }
+        }
+      }
+    }
+  });
+}
+
+function exportEventsCSV() {
+  if (!allEventsCache.length) { alert('No events to export.'); return; }
+  const header = 'datetime,level,reason,role,zone,action,action_confidence\n';
+  const rows = allEventsCache.map(e =>
+    [e.datetime,e.level,('"'+(e.reason||'').replace(/"/g,'""')+'"'),
+     e.object_role||e.role,e.zone_name,e.action,e.action_confidence||0].join(',')
+  ).join('\n');
+  const blob = new Blob([header+rows], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'alerts_' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.csv';
+  a.click();
+}
+
+// ── Clips Tab ──
+async function renderClipsTab(body) {
+  const r = await fetch('/api/recorder/clips');
+  const d = await r.json();
+  const clips = d.clips || [];
+  if (clips.length === 0) {
+    body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">
+      <div style="font-size:2rem;margin-bottom:10px">&#127909;</div>
+      <div>No alert clips recorded yet.</div>
+      <div style="font-size:.72rem;margin-top:6px">Clips are saved automatically when alert/critical events are detected.</div>
+    </div>`;
+    return;
+  }
+  const lvlColor = n => n.includes('critical') ? 'var(--alert)' : n.includes('alert') ? '#fb923c' : 'var(--warning)';
+  body.innerHTML = `
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:10px">${clips.length} clip(s) — stored in <code>recordings/</code></div>
+    ${clips.map((c,i) => `
+    <div class="clip-item">
+      <span class="clip-icon">&#127909;</span>
+      <div class="clip-info">
+        <div class="clip-name" style="color:${lvlColor(c.filename)}">${c.filename}</div>
+        <div class="clip-meta">${c.created_at} &bull; ${c.size_kb} KB</div>
+      </div>
+      <a href="/api/recorder/clips/${c.filename}" download class="clip-btn">&#11015; DL</a>
+      <button class="clip-del" onclick="deleteClip('${c.filename}',this)" title="Xoa clip">&#128465;</button>
+    </div>`).join('')}`;
+}
+
+async function deleteClip(filename, btn) {
+  if (!confirm('Xoa clip: ' + filename + '?')) return;
+  try {
+    const r = await fetch('/api/recorder/clips/' + encodeURIComponent(filename), {method:'DELETE'});
+    if (!r.ok) throw new Error((await r.json()).detail);
+    btn.closest('.clip-item').remove();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ── Telegram Tab ──
+async function renderTelegramTab(body) {
+  const r = await fetch('/api/telegram/config');
+  const cfg = r.ok ? await r.json() : {};
+  const enabled = cfg.enabled || false;
+  body.innerHTML = `
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">
+      &#8505; Huong dan: Tao bot tai @BotFather → lay TOKEN.
+      Gui tin nhan cho bot roi truy cap
+      <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> de lay chat_id.
+    </div>
+    <div class="tg-form">
+      <div class="tg-row"><span class="tg-label">Bot Token</span>
+        <input class="src-input" id="tg-token" type="password" placeholder="123456:ABC-..." autocomplete="off" style="flex:1;font-size:.75rem">
+      </div>
+      <div class="tg-row"><span class="tg-label">Chat ID</span>
+        <input class="src-input" id="tg-chat" type="text" value="${cfg.chat_id||''}" placeholder="-1001234..." style="flex:1;font-size:.75rem">
+      </div>
+      <div class="tg-row"><span class="tg-label">Min Level</span>
+        <select class="src-input" id="tg-level" style="flex:1;font-size:.75rem">
+          <option value="warning" ${cfg.min_level==='warning'?'selected':''}>Warning+</option>
+          <option value="alert" ${(!cfg.min_level||cfg.min_level==='alert')?'selected':''}>Alert+</option>
+          <option value="critical" ${cfg.min_level==='critical'?'selected':''}>Critical only</option>
+        </select>
+        <input class="src-input" id="tg-cooldown" type="number" value="${cfg.cooldown_sec||30}" min="5" max="300" title="Cooldown (s)" style="width:70px;font-size:.75rem">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted)">
+        <input type="checkbox" id="tg-photo" ${cfg.send_photo!==false?'checked':''} style="accent-color:var(--accent)">
+        <label for="tg-photo">Dinh kem anh snapshot</label>
+        <span id="tg-status-dot" style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:${enabled?'var(--normal)':'var(--muted)'}"></span>
+        <span style="font-size:.68rem">${enabled?'Active':'Disabled'}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button class="src-btn" style="flex:2" onclick="saveTgConfig()">&#128190; Luu &amp; Bat</button>
+        <button class="src-btn" style="flex:1;background:rgba(0,201,255,.1);color:var(--accent)" onclick="testTgConfig()">Test</button>
+      </div>
+      <button class="src-btn" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-weight:400" onclick="disableTg()">Tat thong bao</button>
+      <div class="status-msg" id="tg-msg"></div>
+    </div>`;
+}
+
+async function saveTgConfig() {
+  const token  = document.getElementById('tg-token').value.trim();
+  const chat   = document.getElementById('tg-chat').value.trim();
+  const level  = document.getElementById('tg-level').value;
+  const cool   = parseFloat(document.getElementById('tg-cooldown').value)||30;
+  const photo  = document.getElementById('tg-photo').checked;
+  if (!token||!chat) { showMsg('tg-msg','Nhap Bot Token va Chat ID','err'); return; }
+  showMsg('tg-msg','Dang luu...','info');
+  try {
+    const r = await fetch('/api/telegram/config',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({bot_token:token,chat_id:chat,enabled:true,min_level:level,cooldown_sec:cool,send_photo:photo})});
+    const d = await r.json();
+    if (r.ok&&d.status==='ok') { showMsg('tg-msg','&#10003; Da luu! Telegram bat.','ok'); document.getElementById('tg-token').value=''; }
+    else showMsg('tg-msg','Loi: '+(d.detail||JSON.stringify(d)),'err');
+  } catch(e) { showMsg('tg-msg','Loi ket noi: '+e.message,'err'); }
+}
+async function testTgConfig() {
+  showMsg('tg-msg','Dang gui test...','info');
+  try {
+    const r = await fetch('/api/telegram/test',{method:'POST'});
+    const d = await r.json();
+    if (r.ok) showMsg('tg-msg','&#10003; '+(d.message||'Ket noi thanh cong!'),'ok');
+    else showMsg('tg-msg','&#10007; '+(d.detail||'Loi'),'err');
+  } catch(e) { showMsg('tg-msg','Loi: '+e.message,'err'); }
+}
+async function disableTg() {
+  await fetch('/api/telegram/config',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({bot_token:'',chat_id:'',enabled:false})});
+  showMsg('tg-msg','Da tat Telegram.','info');
+}
+
+// ── Recorder Tab ──
+async function renderRecorderTab(body) {
+  const r = await fetch('/api/recorder/config');
+  const cfg = r.ok ? await r.json() : {};
+  body.innerHTML = `
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">
+      He thong tu dong ghi clip video (MP4) khi co alert. Clip bao gom ${cfg.pre_buffer_sec||5}s truoc va ${cfg.post_buffer_sec||8}s sau su kien.
+      ${cfg.is_recording?'<span style="color:var(--alert);font-weight:600"> &#9679; DANG GHI...</span>':''}
+    </div>
+    <div class="tg-form">
+      <div class="tg-row"><span class="tg-label">Bat / Tat</span>
+        <select class="src-input" id="rec-enabled" style="flex:1;font-size:.75rem">
+          <option value="true" ${cfg.enabled!==false?'selected':''}>Bat (Auto Record)</option>
+          <option value="false" ${cfg.enabled===false?'selected':''}>Tat</option>
+        </select>
+      </div>
+      <div class="tg-row"><span class="tg-label">Min Level</span>
+        <select class="src-input" id="rec-level" style="flex:1;font-size:.75rem">
+          <option value="warning" ${cfg.min_level==='warning'?'selected':''}>Warning+</option>
+          <option value="alert" ${(!cfg.min_level||cfg.min_level==='alert')?'selected':''}>Alert+</option>
+          <option value="critical" ${cfg.min_level==='critical'?'selected':''}>Critical only</option>
+        </select>
+      </div>
+      <div class="tg-row"><span class="tg-label">Pre-buffer (s)</span>
+        <input class="src-input" id="rec-pre" type="number" value="${cfg.pre_buffer_sec||5}" min="2" max="30" style="flex:1;font-size:.75rem">
+      </div>
+      <div class="tg-row"><span class="tg-label">Post-buffer (s)</span>
+        <input class="src-input" id="rec-post" type="number" value="${cfg.post_buffer_sec||8}" min="2" max="60" style="flex:1;font-size:.75rem">
+      </div>
+      <div class="tg-row"><span class="tg-label">Cooldown (s)</span>
+        <input class="src-input" id="rec-cool" type="number" value="${cfg.cooldown_sec||20}" min="5" max="300" style="flex:1;font-size:.75rem">
+      </div>
+      <div class="tg-row"><span class="tg-label">Max Clips</span>
+        <input class="src-input" id="rec-max" type="number" value="${cfg.max_clips||50}" min="5" max="500" style="flex:1;font-size:.75rem">
+      </div>
+      <div style="font-size:.68rem;color:var(--muted)">Luu tai: <code>${cfg.output_dir||'recordings/'}</code></div>
+      <button class="src-btn" onclick="saveRecorderConfig()">&#128190; Luu cai dat</button>
+      <div class="status-msg" id="rec-msg"></div>
+    </div>`;
+}
+
+async function saveRecorderConfig() {
+  const enabled = document.getElementById('rec-enabled').value === 'true';
+  const level   = document.getElementById('rec-level').value;
+  const pre     = parseFloat(document.getElementById('rec-pre').value)||5;
+  const post    = parseFloat(document.getElementById('rec-post').value)||8;
+  const cool    = parseFloat(document.getElementById('rec-cool').value)||20;
+  const maxC    = parseInt(document.getElementById('rec-max').value)||50;
+  showMsg('rec-msg','Dang luu...','info');
+  try {
+    const r = await fetch('/api/recorder/config',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({enabled,min_level:level,pre_buffer_sec:pre,post_buffer_sec:post,cooldown_sec:cool,max_clips:maxC})});
+    const d = await r.json();
+    if (r.ok&&d.status==='ok') showMsg('rec-msg','&#10003; Da luu cai dat!','ok');
+    else showMsg('rec-msg','Loi: '+(d.detail||'?'),'err');
+  } catch(e) { showMsg('rec-msg','Loi: '+e.message,'err'); }
+}
+
+// Close analytics on backdrop click
+document.getElementById('analytics-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeAnalytics();
+});
+</script>
+</body>
+</html>

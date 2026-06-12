@@ -1,0 +1,24 @@
+{
+  "model": "ActionNet-GRU",
+  "version": "v1",
+  "architecture": "GRU(hidden=128, layers=2) \u2192 FC(64) \u2192 8 classes",
+  "input_shape": [
+    30,
+    132
+  ],
+  "num_classes": 8,
+  "action_classes": [
+    "standing",
+    "walking",
+    "running",
+    "falling",
+    "climbing",
+    "fighting",
+    "raising_hand",
+    "gathering"
+  ],
+  "best_val_acc": 95.31,
+  "test_acc": 90.62,
+  "use_real_data": true,
+  "trained_at": "2026-03-15T05:25:58.196040"
+}

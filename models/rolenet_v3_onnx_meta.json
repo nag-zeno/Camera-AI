@@ -1,0 +1,46 @@
+{
+  "onnx_model": "rolenet_v3.onnx",
+  "quant_model": "rolenet_v3_quant.onnx",
+  "input_shape": [
+    1,
+    3,
+    256,
+    128
+  ],
+  "input_name": "input",
+  "output_name": "logits",
+  "classes": [
+    "shipper",
+    "doctor",
+    "police",
+    "military",
+    "security",
+    "student",
+    "chef",
+    "janitor",
+    "construction",
+    "nurse",
+    "postman",
+    "technician",
+    "worker",
+    "civil_guard",
+    "normal",
+    "unknown"
+  ],
+  "imagenet_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "imagenet_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "benchmark_ms": {
+    "PyTorch (FP32)": 176.93414499999562,
+    "ONNX FP32": 57.79861799999708,
+    "ONNX INT8": 101.39954799999941
+  },
+  "num_classes": 16
+}

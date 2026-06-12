@@ -1,0 +1,77 @@
+{
+  "model": "EfficientNet-B2",
+  "version": "v2",
+  "num_classes": 16,
+  "classes": [
+    "shipper",
+    "doctor",
+    "police",
+    "military",
+    "security",
+    "student",
+    "chef",
+    "janitor",
+    "construction",
+    "nurse",
+    "postman",
+    "technician",
+    "worker",
+    "civil_guard",
+    "normal",
+    "unknown"
+  ],
+  "class_to_idx": {
+    "shipper": 0,
+    "doctor": 1,
+    "police": 2,
+    "military": 3,
+    "security": 4,
+    "student": 5,
+    "chef": 6,
+    "janitor": 7,
+    "construction": 8,
+    "nurse": 9,
+    "postman": 10,
+    "technician": 11,
+    "worker": 12,
+    "civil_guard": 13,
+    "normal": 14,
+    "unknown": 15
+  },
+  "input_size": [
+    256,
+    128
+  ],
+  "best_val_acc": 64.41,
+  "v1_acc": 59.05,
+  "improvement": 5.36,
+  "imagenet_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "imagenet_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "label_map": {
+    "0": "shipper",
+    "1": "doctor",
+    "2": "police",
+    "3": "military",
+    "4": "security",
+    "5": "student",
+    "6": "chef",
+    "7": "janitor",
+    "8": "construction",
+    "9": "nurse",
+    "10": "postman",
+    "11": "technician",
+    "12": "worker",
+    "13": "civil_guard",
+    "14": "normal",
+    "15": "unknown"
+  },
+  "tta_enabled": true
+}

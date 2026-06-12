@@ -1,0 +1,103 @@
+============================================================
+  AI SECURITY CAMERA — BÁO CÁO TEST THỰC TẾ
+  Thời điểm: 2026-05-07 19:02:08
+============================================================
+
+============================================================
+  1. THÔNG TIN HỆ THỐNG
+============================================================
+  os: Windows 10.0.26200
+  python: 3.10.11
+  cpu_cores: 12
+  hostname: Zeno
+  ram_total_gb: 16.8
+  ram_avail_gb: 5.0
+  cpu_usage_pct: 5.8
+
+============================================================
+  2. MODEL FILES
+============================================================
+  ✅ RoleNet ONNX FP32: rolenet_v3.onnx (112.2 MB)
+  ✅ RoleNet ONNX INT8: rolenet_v3_quant.onnx (28.4 MB)
+  ✅ RoleNet V3 PyTorch: rolenet_v3_best.pt (112.2 MB)
+  ✅ ActionNet GRU: actionnet_gru.pt (0.8 MB)
+  ✅ ContextNet XGBoost: context_net.pkl (2.4 MB)
+
+============================================================
+  3. TRẠNG THÁI PIPELINE (API)
+============================================================
+  Pipeline: KHÔNG CHẠY hoặc không kết nối được ⚠️
+  (Chạy app.py trước nếu muốn thu thập FPS realtime)
+
+============================================================
+  4. PHÂN TÍCH EVENT LOG
+============================================================
+  Tổng events: 12142
+  Thời gian ghi: 91102.0 phút
+  Events/phút: 0.13
+  Khoảng: 2026-03-04 14:49:33 → 2026-05-06 21:11:32
+
+  --- Phân phối theo Alert Level ---
+    alert        : 10088 ██████████████████████████████
+    warning      : 1521 ██████████████████████████████
+    critical     :  533 ██████████████████████████████
+
+  --- Phân phối theo Role (top 10) ---
+    normal               : 6249
+    unknown              : 4499
+    shipper              : 1379
+    construction         : 12
+    janitor              : 1
+    chef                 : 1
+    worker               : 1
+
+  --- Phân phối theo Action ---
+    unknown              : 12023
+    standing             : 99
+    falling              : 14
+    running              : 4
+    walking              : 2
+
+  --- Phân phối theo Zone ---
+    restricted_area      : 11986
+    zone_1               : 98
+    entrance             : 38
+    outside              : 14
+    zone_2               : 3
+    2                    : 3
+
+============================================================
+  5. MẪU EVENTS GẦN NHẤT (ưu tiên alert/critical)
+============================================================
+  [2026-05-06 21:11:32] level=warning  role=unknown         action=running      zone=zone_1          | ⚠️ [WARNING-ML] #232 unknown in 'zone_1', action=🏃running(65
+  [2026-05-06 21:11:23] level=warning  role=normal          action=running      zone=zone_1          | ⚠️ [WARNING-ML] #232 normal in 'zone_1', action=🏃running(65%
+  [2026-05-06 21:11:01] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #224 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-06 21:10:53] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #224 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-06 21:10:44] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #224 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-06 21:10:36] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #224 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-06 21:10:28] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #224 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-06 21:07:38] level=alert    role=unknown         action=walking      zone=zone_1          | 🔴 [ALERT-ML] #187 unknown in 'zone_1', action=🚶walking(70%) 
+  [2026-05-06 21:03:52] level=alert    role=construction    action=falling      zone=outside         | 🔴 [ALERT-ML] #163 construction, action=🚨falling(60%) (conf=1
+  [2026-05-06 21:03:44] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #163 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-06 21:02:00] level=warning  role=construction    action=standing     zone=zone_1          | ⚠️ [WARNING-ML] #150 construction in 'zone_1', action=🧍stand
+  [2026-05-06 21:01:58] level=alert    role=construction    action=falling      zone=outside         | 🔴 [ALERT-ML] #148 construction, action=🚨falling(60%) (conf=1
+  [2026-05-06 21:01:52] level=alert    role=unknown         action=standing     zone=zone_1          | 🔴 [ALERT-ML] #150 unknown in 'zone_1', action=🧍standing(75%)
+  [2026-05-06 21:00:51] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #143 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-06 21:00:43] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #143 unknown, action=🚨falling(60%) (conf=100%)
+
+============================================================
+  6. LỖI / WARNING TỪ LOG
+============================================================
+  (không tìm thấy lỗi trong log files)
+
+============================================================
+  7. NHẬN XÉT THỰC TẾ TỪ NGƯỜI DÙNG
+============================================================
+  Skipped (non-interactive mode). Add observations manually in the report.
+
+============================================================
+  CÁCH GỬI REPORT NÀY CHO AI:
+  1. Copy toàn bộ nội dung file này
+  2. Paste vào cửa sổ chat với AI
+  3. Thêm mô tả: 'đây là kết quả test thực tế, phân tích và cải thiện'
+============================================================

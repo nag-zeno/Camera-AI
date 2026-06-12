@@ -1,0 +1,101 @@
+🧠 Phân tích: Train model GÌ và TẠI SAO
+Hệ thống hiện tại có 3 điểm yếu cần model riêng để khắc phục:
+
+Điểm yếu 1: Role Classifier
+  Hiện tại → Chỉ dựa màu HSV (shipper xanh lá = Grab, cam = Shopee)
+  Vấn đề  → Rất dễ sai, người mặc màu ngẫu nhiên bị nhận nhầm
+  Giải pháp → Fine-tune CNN nhận diện 16 vai trò (trang phục, phụ kiện)
+Điểm yếu 2: Context Reasoning
+  Hiện tại → 17 luật cứng (if-else)
+  Vấn đề  → Không học từ dữ liệu thực, không thích nghi
+  Giải pháp → Train ML classifier từ feature vector (role+zone+behavior+time)
+Điểm yếu 3: Behavior Recognition
+  Hiện tại → Chỉ phát hiện loitering + direction cơ bản
+  Vấn đề  → Không nhận ra: chạy đột ngột, ngã, đánh nhau, leo trèo
+  Giải pháp → Pose estimation + Action classifier
+📐 Kiến trúc Model Đề Xuất — 3 Model Riêng Biệt
+┌─────────────────────────────────────────────────────────┐
+│              Hệ thống sau khi train model               │
+│                                                         │
+│  Camera Frame                                           │
+│       │                                                 │
+│       ▼                                                 │
+│  [YOLOv8] ──────────── person crop                      │
+│       │                    │                            │
+│       │              ┌─────┴──────────────┐             │
+│       │              │                    │             │
+│       │         [Model 1]           [Model 3]           │
+│       │        RoleNet             ActionNet            │
+│       │    (CNN fine-tune)     (Pose+LSTM/GRU)         │
+│       │    16 role classes     8 action classes         │
+│       │              │                    │             │
+│       │              └─────┬──────────────┘             │
+│       │                    │                            │
+│       ▼                    ▼                            │
+│  [Zone + Identity] → Feature Vector                     │
+│       │                    │                            │
+│       └────────────► [Model 2]                          │
+│                      ContextNet                         │
+│               (XGBoost / LightGBM)                      │
+│               Alert Level + Confidence                  │
+└─────────────────────────────────────────────────────────┘
+📋 Chi Tiết Từng Model
+🥇 Model 1: RoleNet — Nhận diện vai trò từ ảnh người
+Ưu tiên cao nhất — ảnh hưởng lớn nhất
+
+Hạng mục	Chi tiết
+Architecture	MobileNetV3-Small (nhẹ, chạy CPU thời gian thực)
+Input	Person crop 128×256 px
+Output	16 class (shipper, bác sĩ, công an...) + confidence
+Pretrained base	ImageNet → Fine-tune với data Việt Nam
+Data cần	~500-1000 ảnh/class (8,000-16,000 ảnh)
+Train time	2-4 giờ với GPU, 1-2 ngày CPU
+Nguồn data	Google Images, Open Images, tự chụp, augmentation
+🥈 Model 2: ContextNet — Học cách ra quyết định
+Dễ nhất — CÓ THỂ LÀM NGAY vì không cần ảnh
+
+Hạng mục	Chi tiết
+Architecture	XGBoost / LightGBM (cực nhẹ) hoặc MLP 3 lớp
+Input	Feature vector 15 chiều: [role_id, zone_type, zone_status, loitering, time_in_zone, visit_count, direction, hour, identity, confidence, ...]
+Output	Alert level (0-5) + probability
+Data cần	Tự sinh được! Chạy rule engine → ghi log → dùng làm training data
+Train time	Vài phút
+Ưu điểm	Học được pattern mà rule không cover, giải thích được (SHAP)
+🥉 Model 3: ActionNet — Nhận diện hành động nguy hiểm
+Phức tạp nhất — làm sau
+
+Hạng mục	Chi tiết
+Architecture	MediaPipe Pose → keypoints → LSTM/GRU
+Input	Chuỗi 30 frame keypoints (x,y,z × 33 điểm)
+Output	8 action: đứng yên, đi bộ, chạy, ngã, leo trèo, đánh nhau, giơ tay, tụ tập
+Data cần	Video clip có nhãn (~200 clip/action)
+Train time	4-8 giờ với GPU
+🗓️ Lộ Trình Thực Tế
+Tuần 1-2: ContextNet (Ngay bây giờ, KHÔNG cần data ảnh)
+  ├── Chạy pipeline → thu thập feature vectors + alert labels
+  ├── Train XGBoost/LightGBM (vài phút)
+  ├── Replace rule engine bằng ML model
+  └── Kết quả: Alert decisions thông minh hơn, learn từ data
+Tuần 3-4: RoleNet Data Collection
+  ├── Thu thập ảnh 16 roles (Google, OpenImages, tự chụp)
+  ├── Label bằng tool đơn giản (LabelImg)
+  ├── Augmentation (flip, brightness, crop)
+  └── ~5,000-8,000 ảnh là đủ để bắt đầu
+Tuần 5-6: RoleNet Training
+  ├── Fine-tune MobileNetV3 từ ImageNet
+  ├── Train trên máy local (nếu có GPU) hoặc Google Colab (free)
+  ├── Tích hợp vào role_classifier.py
+  └── Kết quả: Role detection chính xác hơn 40-60%
+Tháng 2: ActionNet (tùy chọn)
+  ├── MediaPipe Pose estimation (pre-trained, miễn phí)
+  ├── Thu thập video clip hành động
+  └── Train LSTM phân loại hành động
+✅ Kết luận
+Train model riêng là đúng hướng với mục tiêu dự án.
+Thứ tự ưu tiên: ContextNet trước (không cần data, làm ngay), RoleNet sau (cần thu thập data), ActionNet cuối (phức tạp nhất).
+
+Bạn muốn bắt đầu với Model nào?
+
+🚀 ContextNet ngay hôm nay — Tôi có thể implement luôn, không cần thu thập data
+📸 Lên kế hoạch thu thập data cho RoleNet — Tôi sẽ tạo data collection script + labeling guide
+🎬 ActionNet với MediaPipe Pose — Bắt đầu từ pose estimation trước

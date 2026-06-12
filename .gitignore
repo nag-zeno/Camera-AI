@@ -1,0 +1,57 @@
+# .gitignore cho Smart AI Security Camera System
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+venv*/
+
+# YOLO model weights (auto-download) & Model huấn luyện dung lượng lớn (>50MB)
+models/*.pt
+models/*.onnx
+# Giữ lại model ActionNet GRU nhỏ (840 KB)
+!models/actionnet_gru.pt
+# File weights YOLO tải tự động ở root
+yolov8n.pt
+
+# Dữ liệu nhạy cảm & Các tệp tin dữ liệu huấn luyện lớn
+data/known_faces/
+data/actionnet_dataset/
+data/rolenet_dataset/
+data/sample_videos/
+data/*.zip
+*.zip
+logs/
+
+# Cấu hình zones riêng của camera (tránh ghi đè cấu hình webcam/IP camera thực tế của người khác)
+data/zones/*.json
+!data/zones/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+**/desktop.ini
+
+# Môi trường
+.env
+*.env
+
+# Script test (chứa token/credentials cũ hoặc chạy nháp cục bộ)
+test_telegram.py
+
+# Video recordings (files lớn)
+recordings/
+
+# Uploads
+uploads/

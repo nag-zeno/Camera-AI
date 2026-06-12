@@ -1,0 +1,106 @@
+============================================================
+  AI SECURITY CAMERA — BÁO CÁO TEST THỰC TẾ
+  Thời điểm: 2026-06-07 19:56:52
+============================================================
+
+============================================================
+  1. THÔNG TIN HỆ THỐNG
+============================================================
+  os: Windows 10.0.26200
+  python: 3.10.11
+  cpu_cores: 12
+  hostname: Zeno
+  ram_total_gb: 16.8
+  ram_avail_gb: 2.6
+  cpu_usage_pct: 8.5
+
+============================================================
+  2. MODEL FILES
+============================================================
+  ✅ RoleNet ONNX FP32: rolenet_v3.onnx (112.2 MB)
+  ✅ RoleNet ONNX INT8: rolenet_v3_quant.onnx (28.4 MB)
+  ✅ RoleNet V3 PyTorch: rolenet_v3_best.pt (112.2 MB)
+  ✅ ActionNet GRU: actionnet_gru.pt (0.8 MB)
+  ✅ ContextNet XGBoost: context_net.pkl (3.1 MB)
+
+============================================================
+  3. TRẠNG THÁI PIPELINE (API)
+============================================================
+  Pipeline: KHÔNG CHẠY hoặc không kết nối được ⚠️
+  (Chạy app.py trước nếu muốn thu thập FPS realtime)
+
+============================================================
+  4. PHÂN TÍCH EVENT LOG
+============================================================
+  Tổng events: 12651
+  Thời gian ghi: 137090.2 phút
+  Events/phút: 0.09
+  Khoảng: 2026-03-04 14:49:33 → 2026-06-07 19:39:46
+
+  --- Phân phối theo Alert Level ---
+    alert        : 10433 ██████████████████████████████
+    warning      : 1650 ██████████████████████████████
+    critical     :  568 ██████████████████████████████
+
+  --- Phân phối theo Role (top 10) ---
+    normal               : 6305
+    unknown              : 4785
+    shipper              : 1392
+    construction         : 78
+    chef                 : 44
+    technician           : 18
+    civil_guard          : 8
+    worker               : 7
+    nurse                : 5
+    police               : 3
+
+  --- Phân phối theo Action ---
+    unknown              : 12439
+    standing             : 134
+    falling              : 38
+    running              : 25
+    walking              : 15
+
+  --- Phân phối theo Zone ---
+    restricted_area      : 11986
+    outside              : 320
+    zone_1               : 190
+    zone_2               : 114
+    entrance             : 38
+    2                    : 3
+
+============================================================
+  5. MẪU EVENTS GẦN NHẤT (ưu tiên alert/critical)
+============================================================
+  [2026-06-07 19:39:46] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:38:59] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:38:58] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:36:37] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:36:28] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:28:36] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:16:52] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:16:20] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:14:32] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:13:25] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:10:16] level=alert    role=unknown         action=unknown      zone=outside         | 📷 Camera ghi nhận có người lạ tại khu vực giám sát.
+  [2026-06-07 19:07:16] level=warning  role=civil_guard     action=unknown      zone=outside         | 📷 Camera ghi nhận có dân phòng tại khu vực giám sát.
+  [2026-06-07 19:06:46] level=critical role=unknown         action=unknown      zone=zone_2          | 🚨 Bạn ơi, có người lạ đang lảng vảng ở khu vực giám sát, đã 
+  [2026-06-07 19:06:16] level=critical role=unknown         action=unknown      zone=zone_2          | 🚨 Bạn ơi, có người lạ đang lảng vảng ở khu vực giám sát, đã 
+  [2026-06-07 19:05:46] level=warning  role=student         action=unknown      zone=zone_2          | 🚨 Bạn ơi, có học sinh / sinh viên đang lảng vảng ở khu vực g
+
+============================================================
+  6. LỖI / WARNING TỪ LOG
+============================================================
+  (không tìm thấy lỗi trong log files)
+
+============================================================
+  7. NHẬN XÉT THỰC TẾ TỪ NGƯỜI DÙNG
+============================================================
+  Skipped (non-interactive mode). Add observations manually in the report.
+
+============================================================
+  CÁCH GỬI REPORT NÀY CHO AI:
+  1. Copy toàn bộ nội dung file này
+  2. Paste vào cửa sổ chat với AI
+  3. Thêm mô tả: 'đây là kết quả test thực tế, phân tích và cải thiện'
+============================================================

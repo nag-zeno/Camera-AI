@@ -1,0 +1,518 @@
+================================================================================
+  BAO CAO TONG HOP DU AN — AI Security Camera System
+  Ngay cap nhat: 08/05/2026 — 02:29 (GMT+7)
+  Phien ban bao cao: 2.0 (cap nhat tu v1.0 ngay 23/03/2026)
+================================================================================
+
+quay lại với dự án thực tế, tôi vẫn chưa thấy phần tính năng sử lý ngôn ngữ tự nhiên để đảm nhận chức năng thông báo có kẻ xâm nhập hoặc những tình huống khác theo phong cách hiểu ngữ cảnh và thông báo bằng những dòng ngôn ngữ tự nhiên
+
+================================================================================
+1. TONG QUAN KIEN TRUC HE THONG (HIEN TAI)
+================================================================================
+
+Pipeline day du da duoc trien khai voi cac module sau:
+
+    Camera Frame
+         │
+         ▼
+    [YOLOv8n] → Detect objects (person, vehicle, ...)
+         │
+         ▼
+    [ObjectTracker] → ByteTrack ID tracking
+         │
+         ├──► [RoleClassifier]    → V3 → V2 → V1 → Rule chain
+         ├──► [ActionRecognizer]  → MediaPipe Pose + GRU → Rule fallback
+         ├──► [IdentityManager]   → Face recognition (known_faces/)
+         ├──► [ZoneDetector]      → Polygon zones
+         ├──► [BehaviorAnalyzer]  → Loitering, direction
+         └──► [ContextEngineML]   → XGBoost alert scoring → Rule fallback
+                    │
+                    ▼
+             [EventLogger]       → Ghi log JSONL (logs/events.jsonl)
+             [Visualizer]        → Annotate frame (bbox, label, alert color)
+             [TelegramNotifier]  → Push notification (anh + text)
+             [AlertRecorder]     → Ghi clip video khi co alert
+             [FastAPI App]       → Dashboard web UI (port 8000)
+
+Toi uu hieu nang (pipeline.py):
+  - Round-robin MediaPipe: moi frame chi chay pose cho 1 nguoi (luan phien)
+  - Parallel inference: RoleNet + IdentityManager chay ThreadPoolExecutor
+  - Per-track inference cache: role_skip=8f, identity_skip=15f
+  - Adaptive skip: tu dong tang skip khi FPS < target * 0.6
+  - ThreadPool workers: 2 (giam CPU contention)
+
+
+================================================================================
+2. TRANG THAI TUNG MODULE — THOI DIEM 08/05/2026
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+[HOAN THANH - ON DINH] RoleClassifier (RoleNet V3)
+────────────────────────────────────────────────────────────────────────────────
+
+  Version | Architecture          | Val Acc  | Samples | Trang thai
+  --------|-----------------------|----------|---------|-------------
+  V1      | MobileNetV3-Small     | 59.05%   | ~5,000  | Deprecated
+  V2      | EfficientNet-B2 + TTA | 64.41%   | ~8,000  | Fallback du phong
+  V3      | ConvNeXt-Tiny + TTA   | ~99.96%* | 21,785  | ACTIVE (chinh)
+
+  * Can luu y: val acc cao do dataset Colab — chua kiem thu camera thuc te VN
+
+  16 classes: shipper, doctor, police, military, security, student,
+              chef, janitor, construction, nurse, postman, technician,
+              worker, civil_guard, normal, unknown
+
+  Fallback chain: V3 → V2 → V1 → Rule-based (nguong confidence)
+  Files: models/rolenet_v3_best.pt (~107 MB), models/rolenet_v3_scripted.pt
+
+  Trang thai: ON DINH. Dang cho test thuc te.
+
+────────────────────────────────────────────────────────────────────────────────
+[HOAN THANH - ON DINH] ActionRecognizer (ActionNet GRU)
+────────────────────────────────────────────────────────────────────────────────
+
+  Architecture: MediaPipe Pose → 132-dim keypoints → GRU(128, 2 layers)
+                → FC(64) → 8 classes
+  8 classes: standing, walking, running, falling, climbing,
+             fighting, raising_hand, gathering
+  Val Accuracy : 95.31%
+  Test Accuracy: 90.62%
+
+  Fallback chain (3 cap):
+    1. MediaPipe + GRU       → Full ML (chinh xac ~95%)
+    2. MediaPipe + no GRU    → Rule tu keypoints (phat hien nga, gio tay)
+    3. No MediaPipe          → Rule tu velocity + bbox aspect ratio
+
+  Cau hinh hien tai (pipeline.py):
+    action_skip_frames = 3   (round-robin, moi nguoi duoc chay 1 lan / 3 frame)
+    Padding crop = 20%       (tang tu 10% de detect nguoi o xa)
+    Min detection conf = 0.3 (ha tu 0.5 de nhan dien tot hon)
+    Resize min 128x128 neu crop nho
+
+  Giu hang (thread-safety):
+    MediaPipe KHONG thread-safe → serialize qua _mp_lock (threading.Lock)
+    Action chay TUAN TU (khong submit vao ThreadPoolExecutor)
+
+  Trang thai: ON DINH. Da fix thread-safety. Dang can kiem thu thuc te.
+
+────────────────────────────────────────────────────────────────────────────────
+[HOAN THANH - ON DINH] ContextEngine
+────────────────────────────────────────────────────────────────────────────────
+
+  Hai tang hoat dong song song:
+    1. ContextEngineML (XGBoost, 300 trees, max_depth=6)
+       - Trained tren 60,000 synthetic samples
+       - 6 alert levels: ignore/normal/watch/warning/alert/critical
+       - File: models/context_net.pkl (1.9 MB)
+    2. ContextEngine (Rule-based fallback)
+       - 20+ rules voi priority tu cao xuong thap
+       - Action-based rules (priority 175-200): fighting/falling/climbing/running
+       - Role+Zone rules (priority 55-100): unknown_loitering, restricted zone
+       - Cooldown per rule:track_id de tranh spam alert
+
+  Trang thai: ON DINH. ContextNet can retrain voi data thuc.
+
+────────────────────────────────────────────────────────────────────────────────
+[HOAN THANH - ON DINH] AlertRecorder (Video Recording)
+────────────────────────────────────────────────────────────────────────────────
+
+  Da implement day du (alert_recorder.py — 353 dong):
+    - Pre-buffer: 5 giay TRUOC khi alert (ring buffer)
+    - Post-buffer: 8 giay SAU su kien
+    - Per-track cooldown: 20 giay (tranh clip trung lap)
+    - Min level trigger: "alert" (co the cau hinh)
+    - Max clips: 50 (tu dong xoa cu nhat khi qua gioi han)
+    - Thread-safe: worker thread rieng biet (khong block pipeline)
+    - Dinh danh file: alert_YYYYMMDD_HHMMSS_level_role.mp4
+    - Luu vao: recordings/
+
+  Trang thai: ON DINH. Da tich hop vao pipeline._emit_alert().
+
+────────────────────────────────────────────────────────────────────────────────
+[HOAN THANH - ON DINH] TelegramNotifier
+────────────────────────────────────────────────────────────────────────────────
+
+  Da implement (modules/telegram_notifier.py):
+    - Gui anh snapshot + text khi co alert/critical event
+    - Fallback text-only neu khong co frame
+    - Rate limiting va cooldown de tranh spam
+    - Cau hinh qua config: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+
+  Trang thai: ON DINH. Can cau hinh token + chat_id de su dung.
+
+────────────────────────────────────────────────────────────────────────────────
+[HOAN THANH - ON DINH] Web Dashboard (FastAPI + MJPEG)
+────────────────────────────────────────────────────────────────────────────────
+
+  app.py (59 KB):
+  Endpoint               | Mo ta
+  -----------------------|--------------------------------------------------
+  GET  /                 | Dashboard UI (dark theme)
+  GET  /video_feed       | MJPEG live stream
+  GET  /api/status       | FPS, action mode, zone count, model info
+  GET  /api/objects      | Danh sach tracked objects voi role/action/alert
+  GET  /api/events       | Event log (filter level/limit/since)
+  GET  /api/stats        | Thong ke tong hop
+  GET  /api/zones        | Danh sach zones
+  POST /api/zones        | Cap nhat zones runtime
+  POST /api/source       | Doi nguon video (webcam/path/URL)
+  POST /api/upload       | Upload file video
+  GET  /api/snapshot     | Chup anh goc (khong annotate, dung cho Zone Editor)
+  GET  /api/recordings   | Danh sach clip da ghi
+  GET  /recordings/{file}| Download/xem clip video
+
+  Dashboard features (templates/dashboard.html):
+    [x] Live video MJPEG stream
+    [x] Real-time objects list voi role + action label + alert color
+    [x] Recent alerts feed
+    [x] Live stats (People / Vehicles / Alerts / Total Events)
+    [x] Source switcher: Webcam / Upload file / Path/URL
+    [x] Zone Editor — ve polygon zone tren snapshot thuc (khong bi lech)
+    [x] FPS display & source badge
+    [x] Recordings list (xem/download clip alert)
+
+  Trang thai: ON DINH.
+
+────────────────────────────────────────────────────────────────────────────────
+[HOAN THANH] ObjectTracker (ByteTrack variant)
+────────────────────────────────────────────────────────────────────────────────
+
+  - ByteTrack-inspired: kết hợp IoU + feature embedding
+  - Da fix bug: tracking ID switching khi doi tuong chuyen trang thai
+    tinh → dong (conversation 3d809b65)
+  - Per-track velocity tinh tu lich su bbox
+
+  Trang thai: ON DINH.
+
+────────────────────────────────────────────────────────────────────────────────
+[CO SO] ZoneDetector / BehaviorAnalyzer / EventLogger
+────────────────────────────────────────────────────────────────────────────────
+
+  ZoneDetector   : Polygon zone, point-in-polygon, runtime update
+  BehaviorAnalyzer: Loitering (time_in_zone), direction tracking
+  EventLogger    : JSONL append, filter theo level/limit/since
+
+  Trang thai: ON DINH.
+
+────────────────────────────────────────────────────────────────────────────────
+[CO SO] IdentityManager
+────────────────────────────────────────────────────────────────────────────────
+
+  - Face recognition dua tren face_recognition library
+  - Doc anh tu data/known_faces/ (hien tai TRONG — chua co data)
+  - Fallback: IdentityStatus.UNKNOWN cho tat ca
+
+  Trang thai: HOAT DONG nhung khong co ich (chua co known_faces data).
+
+────────────────────────────────────────────────────────────────────────────────
+[MOI] collect_eval_report.py
+────────────────────────────────────────────────────────────────────────────────
+
+  Script thu thap ket qua test thuc te (scripts/collect_eval_report.py):
+    - Doc event log (logs/events.jsonl) va phan tich phan phoi
+    - Goi API neu pipeline dang chay (FPS, objects hien tai)
+    - Quet log file tim ERROR/WARNING
+    - Thu thap nhan xet thu cong tu nguoi dung
+    - Xuat ra reports/eval_report_TIMESTAMP.txt
+
+  Trang thai: HOAN THANH, san sang su dung.
+
+
+================================================================================
+3. TINH NANG DANG NANG CAP (IN PROGRESS)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+[DANG NANG CAP #1] Toi uu hieu nang CPU — Round-Robin + Adaptive Skip
+────────────────────────────────────────────────────────────────────────────────
+
+  Van de: CPU 100% khi co nhieu nguoi (conversation 4b3de26b)
+  Nguyen nhan: MediaPipe chay dong thoi cho N nguoi → N × inference/frame
+
+  Da lam:
+    ✅ Round-robin scheduling: moi frame chi chay MediaPipe cho 1 nguoi
+    ✅ action_skip_frames: ha 6→3 (vi round-robin da giam tai)
+    ✅ role_skip_frames: tang 5→8 (RoleNet chay 1 lan / 8 frame)
+    ✅ identity_skip_frames: tang 10→15
+    ✅ ThreadPool workers: giam so workers giam CPU contention
+    ✅ Adaptive skip: tu dong tang skip khi FPS < target*0.6
+
+  Con thieu / can kiem chung:
+    ⏳ Chua do FPS thuc te sau khi ap dung round-robin tren hardware thuc
+    ⏳ Profile xem bottleneck con la MediaPipe hay YOLOv8
+    ⏳ Xem xet export RoleNet V3 sang ONNX (giam tu ~107 MB PT → ~35 MB)
+    ⏳ Chua thu TensorRT neu co GPU
+
+  Muc tieu: Dat duoc 15+ FPS khi co 3-5 nguoi tren CPU thuong
+
+────────────────────────────────────────────────────────────────────────────────
+[DANG NANG CAP #2] ActionNet — GRU Sliding Window Tuning
+────────────────────────────────────────────────────────────────────────────────
+
+  Van de: Phat hien hanh dong cham (can du 30 frame moi predict)
+  Nguyen nhan: WINDOW_FRAMES=30, STEP_FRAMES=5 → do tre ~1-2 giay
+
+  Da lam:
+    ✅ Ha nguong falling confidence 0.50 → 0.65 (tranh false positive)
+    ✅ Them frames_tracked >= 10 check truoc khi phat alert falling
+    ✅ Consecutive counter (3 frames) cho rule-based falling
+    ✅ Crop padding tang 10% → 20% (nhan dien nguoi o xa)
+    ✅ Min detection confidence ha 0.5 → 0.3
+
+  Con thieu:
+    ⏳ Chua thu nghiem WINDOW_FRAMES nho hon (15-20) de phat hien nhanh hon
+    ⏳ STEP_FRAMES co the giam xuong 3 de update thuong xuyen hon
+    ⏳ Chua co training data "fighting" thuc te (hien tai it mau)
+
+────────────────────────────────────────────────────────────────────────────────
+[DANG NANG CAP #3] ObjectTracker — ID Stability
+────────────────────────────────────────────────────────────────────────────────
+
+  Van de: ID switching khi doi tuong chuyen trang thai tinh → dong
+  Da fix (conversation 3d809b65): cai thien IoU + embedding consistency
+
+  Con theo doi:
+    ⏳ ID switch van xay ra khi occlusion ≥ 2 giay
+    ⏳ Chua co Re-ID module chinh thuc (chi dung IoU + appearance)
+    ⏳ Kalman Filter parameters chua duoc tinh chinh theo thuc te
+
+────────────────────────────────────────────────────────────────────────────────
+[DANG NANG CAP #4] Zone Persistence
+────────────────────────────────────────────────────────────────────────────────
+
+  Van de: Zones bi reset khi restart server
+  Hien trang: POST /api/zones chi luu in-memory, mat khi shutdown
+
+  Da lam:
+    ✅ Zone Editor su dung snapshot thuc (khong bi lech toa do)
+    ✅ Zone de ve tren canvas tuong ung chinh xac voi video frame
+
+  Con thieu:
+    ⏳ Chua luu zones xuong file JSON (zones_config.json)
+    ⏳ Chua load lai zones khi khoi dong lai server
+    ⏳ Chua co UI xoa/sua ten zone sau khi ve
+
+
+================================================================================
+4. TINH NANG DANG DOI TRIEN KHAI (PENDING)
+================================================================================
+
+Do uu tien CAO — Nen lam truoc
+────────────────────────────────────────────────────────────────────────────────
+
+  [P1] ContextNet V2 — Retrain voi data thuc
+       Ly do: Hien tai train tren 60k synthetic samples → 100% acc ao
+       Giai phap: Chay pipeline thuc te → thu logs → retrain XGBoost
+       Anh huong: Cao — quyet dinh alert level khong chinh xac tren thuc te
+       Trang thai: CHUA LAM. Can co event logs thuc truoc.
+
+  [P2] RoleNet V3 — Kiem chung tren camera thuc te Viet Nam
+       Ly do: Val 99.96% tren Colab co the bi data leakage hoac domain gap
+       Giai phap: Quay video nguoi that → test classification
+       Anh huong: Cao — neu sai role thi toan bo alert chain bi sai
+       Trang thai: CHUA LAM.
+
+  [P3] Zone persistence — Luu xuong JSON
+       Giai phap: Them logic ghi zones_config.json khi POST /api/zones
+                  Load lai khi CameraPipeline.__init__()
+       Thoi gian uoc tinh: 1-2 gio
+       Trang thai: CHUA LAM.
+
+  [P4] Known Faces — Them data vao Identity Manager
+       Ly do: data/known_faces/ hien tai trong
+       Giai phap: Them anh .jpg vao cac subfolder theo ten nguoi
+       Anh huong: Trung binh — chi anh huong "known_person" rule
+       Trang thai: CHO NGUOI DUNG CUNG CAP DATA.
+
+Do uu tien TRUNG BINH — Lam sau
+────────────────────────────────────────────────────────────────────────────────
+
+  [P5] RoleNet ONNX Export — Tang toc inference
+       Ly do: ConvNeXt-Tiny PT (107 MB) kha nang tren CPU
+       Giai phap: torch.onnx.export → rolenet_v3.onnx + quantize INT8
+       Uoc tinh tang toc: 1.5-3x (CPU inference)
+       Code mau:
+         torch.onnx.export(model, dummy, "models/rolenet_v3.onnx",
+                           opset_version=17, dynamic_axes=...)
+       Trang thai: CHUA LAM.
+
+  [P6] Dashboard — Historical Analytics
+       Ly do: Hien tai chi xem real-time, khong co bao cao lich su
+       Giai phap: Them trang /reports voi bieu do theo thoi gian
+                  (Chart.js hoac D3.js, doc tu logs/events.jsonl)
+       Trang thai: CHUA LAM.
+
+  [P7] Authentication / API Security
+       Ly do: Hien tai API mo hoan toan, bat ky ai trong mang co the truy cap
+       Giai phap: Basic Auth hoac JWT token cho endpoints nhay cam
+       Trang thai: CHUA LAM (OK cho noi bo LAN).
+
+  [P8] SHAP Explanation cho ContextNet
+       Ly do: Da de cap trong plan nhung chua implement
+       Giai phap: Them SHAP waterfall chart vao dashboard
+       Trang thai: CHUA LAM.
+
+Do uu tien THAP — Tuong lai
+────────────────────────────────────────────────────────────────────────────────
+
+  [P9]  Multi-camera support (hien chi ho tro 1 nguon video)
+  [P10] ActionNet retrain them class (sitting, phone_using, sleeping)
+  [P11] Email / Webhook notification (ngoai Telegram)
+  [P12] Auto-cleanup logs cu (hien tai JSONL tang khong gioi han)
+  [P13] Docker container hoa de deploy de dang
+  [P14] GPU acceleration (CUDA) cho toan bo inference pipeline
+
+
+================================================================================
+5. TOM TAT SO SANH: PLAN GOC vs. THUC TE (CAP NHAT)
+================================================================================
+
+  Muc tieu                                  | Trang thai        | Ghi chu
+  ------------------------------------------|-------------------|-------------------
+  ContextNet — XGBoost (Tuan 1-2)           | HOAN THANH        | 60k synth samples
+  RoleNet — MobileNetV3 (Tuan 5-6)          | VUOT MUC TIEU     | V3 ConvNeXt ~99.96%
+  ActionNet — MediaPipe+GRU (Thang 2)       | VUOT KE HOACH     | val 95.31%, xong som
+  Tich hop toan bo pipeline                 | HOAN THANH        | pipeline.py day du
+  Web dashboard                             | HOAN THANH        | FastAPI+MJPEG
+  Alert video recording                     | HOAN THANH (MOI)  | AlertRecorder (pre+post buf)
+  Telegram notification                     | HOAN THANH (MOI)  | TelegramNotifier
+  Zone Editor chinh xac                     | HOAN THANH (MOI)  | Snapshot-based, khong lech
+  Action label hien thi tren dashboard      | HOAN THANH (MOI)  | objects list co action col
+  Round-robin scheduling MediaPipe          | HOAN THANH (MOI)  | Giam CPU contention
+  Test tren camera thuc te                  | CHUA LAM          | Can deploy thuc te
+  ContextNet V2 tu data thuc                | CHUA LAM          | Can event logs thuc
+  Zone persistence                          | CHUA LAM          | Reset khi restart
+  Known faces data                          | CHUA LAM          | known_faces/ trong
+  RoleNet ONNX export                       | CHUA LAM          | Tuy chon, neu CPU yeu
+  Historical analytics dashboard            | CHUA LAM          | Chi real-time hien tai
+
+
+================================================================================
+6. THONG KE DU AN (HIEN TAI)
+================================================================================
+
+  Chi so                              | So lieu
+  ------------------------------------|------------------------------------------
+  Tong so file Python chinh           | ~28 files
+  Dong code Python uoc tinh           | ~12,000+ dong
+  So model da train                   | 5 versions (RoleNet V1+V2+V3, ContextNet, ActionNet)
+  Training notebooks (Google Colab)   | 5 notebooks
+  Scripts tien ich                    | 12+ scripts
+  Test files                          | 4 files
+  Model files tong dung luong         | ~265 MB (chua ONNX)
+  Training data                       | 21,785 anh (RoleNet V3)
+                                      | 60,000 rows (ContextNet synthetic)
+                                      | Video keypoints (ActionNet)
+  Modules chinh trong pipeline        | 14 modules
+  Dashboard endpoints                 | 12 API endpoints
+  Dashboard UI features               | 12+ tinh nang
+  Alert rules (ContextEngine)         | 20+ rules (priority-based)
+  Action classes (ActionNet)          | 8 classes
+  Role classes (RoleNet)              | 16 classes
+
+
+================================================================================
+7. CAC VAN DE DANG BIET / KNOWN ISSUES
+================================================================================
+
+  #1 CPU 100% khi co 3+ nguoi
+     Trang thai: DANG XU LY (round-robin da giam, can do luong thuc te)
+     Workaround: Dung video file thay webcam (FPS cao hon)
+
+  #2 MediaPipe khong detect duoc nguoi o xa (bbox < 80px)
+     Trang thai: DA CAI THIEN (crop padding 20%, resize min 128px)
+     Van con: Nguoi qua xa (< 50px) van bi bo qua
+
+  #3 RoleNet nhan dang sai trong moi truong ngoai troi / toi
+     Trang thai: CHUA KHAC PHUC (can fine-tune voi data VN)
+
+  #4 ContextNet cho ket qua khong thuc te
+     Trang thai: DA BIET (trained tren synthetic → fallback ve rule-based)
+     Workaround: He thong tu dong fallback ve ContextEngine (rule)
+
+  #5 Zone bi mat khi restart
+     Trang thai: CHUA KHAC PHUC (pending P3)
+
+  #6 Identity Manager luon tra UNKNOWN
+     Trang thai: DUNG DU KIEN (chua co known_faces data)
+
+
+================================================================================
+8. DE XUAT BUOC TIEP THEO (UU TIEN THOI DIEM NAY)
+================================================================================
+
+  Buoc 1 [NGAY] Deploy thu nghiem thuc te
+    → Chay pipeline voi webcam / camera IP thuc
+    → Ghi log it nhat 30-60 phut hoat dong
+    → Chay: python scripts/collect_eval_report.py
+
+  Buoc 2 [TIEP THEO] Zone persistence
+    → Sua POST /api/zones de ghi zones_config.json
+    → Sua CameraPipeline.__init__ doc lai zones_config.json
+    → Thoi gian: ~2 gio
+
+  Buoc 3 [SAU KHI CO LOGS] ContextNet V2
+    → Dung event logs thuc → label thu cong →
+    → Retrain XGBoost voi ground truth
+
+  Buoc 4 [NEU CPU YEU] RoleNet ONNX Export
+    → torch.onnx.export → toi uu inference tren CPU
+    → Xem xet INT8 quantization
+
+  Buoc 5 [DAI HAN] Known faces + Analytics dashboard
+
+
+================================================================================
+9. LIEN KET BAO CAO DO AN (reports/)
+================================================================================
+
+  Cac file MD trong reports/ la bao cao do an chinh thuc (Chuong 1 + Chuong 2).
+  Trang thai kiem tra doi chieu voi code (ngay 08/05/2026):
+
+  File                      | Noi dung                             | Tinh chinh xac
+  --------------------------|--------------------------------------|----------------
+  chuong1_muc1_1.md         | Tong quan IVSS, xu huong AI          | DUNG
+  chuong1_muc1_2.md         | 6 thanh phan ky thuat cot loi        | DA SUA (*)
+  chuong1_muc1_3.md         | Hoc sau: CNN/GRU/XGBoost             | DUNG
+  chuong1_muc1_4_5.md       | Metrics danh gia, cong nghe          | DUNG
+  chuong2_muc2_1.md         | Kien truc pipeline 3 mo hinh         | DUNG
+  chuong2_muc2_2.md         | RoleNet - 3 phien ban                | DUNG
+  chuong2_muc2_3.md         | ContextNet - XGBoost                 | DUNG (1 luu y)
+  chuong2_muc2_4.md         | ActionNet - GRU + fallback           | DA SUA (*)
+  --- CHUONG 3 (VIET MOI 08/05/2026) ---
+  chuong3_muc3_1.md         | 3.1 Gioi thieu, kien truc, tech stack| DUNG
+  chuong3_muc3_2.md         | 3.2 9 module chuc nang pipeline      | DUNG
+  chuong3_muc3_3_4.md       | 3.3 Dashboard + 3.4 API endpoints    | DUNG
+  chuong3_muc3_5.md         | 3.5 Du lieu: RoleNet/Action/Context  | DUNG
+  chuong3_muc3_6.md         | 3.6 Huan luyen 3 model (Colab)       | DUNG
+  chuong3_muc3_7.md         | 3.7 Danh gia model + pipeline FPS    | DUNG
+  chuong3_muc3_8.md         | 3.8 Tich hop + Orchestrator          | DUNG
+
+
+  (*) Da sua:
+    - chuong1_muc1_2.md muc 1.2.6: Xoa thong tin sai "zones tu dong luu zones.json"
+      → Thuc te: zone CHUA co persistence, chi luu in-memory (pending P3)
+      → Da cap nhat: Zone Editor dung snapshot thuc, khong bi lech toa do
+    - chuong2_muc2_4.md muc 2.4.2: Sua padding crop 10% → 20% (da nang cap)
+    - chuong2_muc2_4.md muc 2.4.5c: Sua nguong falling aspect 1.2 → 0.70
+    - chuong2_muc2_4.md: Them muc 2.4.7 ve round-robin + adaptive skip (tinh nang moi)
+
+  Luu y cho chuong2_muc2_3.md:
+    ContextNet: bao cao ghi "16 features" nhung phan «feature goc» van dung
+    "14 features" lam ten de muc. Can lam ro khi chinh sua bao cao:
+      - 14 features = thiet ke goc
+      - 16 features = phien ban hien tai (them action_id + action_confidence)
+
+  Cac module CHUA duoc mo ta trong bao cao do an (can bo sung neu can):
+    - AlertRecorder (alert_recorder.py): ghi clip video khi co alert
+    - TelegramNotifier (telegram_notifier.py): push notification Telegram
+    - collect_eval_report.py: script thu thap ket qua test thuc te
+    - Round-robin MediaPipe scheduling (da them vao 2.4.7)
+
+
+================================================================================
+  Bao cao cap nhat ngay 08/05/2026 02:38 (GMT+7)
+  Dua tren phan tich toan bo codebase tai c:\code\camera-ai\camera-ai
+  Va doi chieu voi 8 file MD bao cao do an trong reports/
+  Cac cuoc tro chuyen lien quan: 4b3de26b, f9b92010, 0e6ceec0, 3b8a5760
+================================================================================

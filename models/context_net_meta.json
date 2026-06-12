@@ -1,0 +1,32 @@
+{
+  "feature_names": [
+    "role_id",
+    "identity_id",
+    "zone_type_id",
+    "zone_status_id",
+    "loitering",
+    "time_in_zone",
+    "visit_count",
+    "direction_id",
+    "hour",
+    "role_confidence",
+    "category_id",
+    "frames_tracked",
+    "is_night",
+    "is_business_hour",
+    "action_id",
+    "action_confidence"
+  ],
+  "classes": [
+    "ignore",
+    "normal",
+    "watch",
+    "warning",
+    "alert",
+    "critical"
+  ],
+  "n_samples": 70232,
+  "test_accuracy": 0.8049,
+  "n_estimators": 300,
+  "max_depth": 6
+}

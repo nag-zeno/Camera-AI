@@ -1,0 +1,140 @@
+============================================================
+  AI SECURITY CAMERA — BÁO CÁO TEST THỰC TẾ
+  Thời điểm: 2026-05-07 19:34:58
+============================================================
+
+============================================================
+  1. THÔNG TIN HỆ THỐNG
+============================================================
+  os: Windows 10.0.26200
+  python: 3.10.11
+  cpu_cores: 12
+  hostname: Zeno
+  ram_total_gb: 16.8
+  ram_avail_gb: 6.9
+  cpu_usage_pct: 64.6
+
+============================================================
+  2. MODEL FILES
+============================================================
+  ✅ RoleNet ONNX FP32: rolenet_v3.onnx (112.2 MB)
+  ✅ RoleNet ONNX INT8: rolenet_v3_quant.onnx (28.4 MB)
+  ✅ RoleNet V3 PyTorch: rolenet_v3_best.pt (112.2 MB)
+  ✅ ActionNet GRU: actionnet_gru.pt (0.8 MB)
+  ✅ ContextNet XGBoost: context_net.pkl (2.4 MB)
+
+============================================================
+  3. TRẠNG THÁI PIPELINE (API)
+============================================================
+  Pipeline: ĐANG CHẠY ✅
+  FPS thực tế: 45.5
+  Số objects hiện tại: 0
+  Action mode: rule_based
+  GRU available: True
+  MediaPipe available: False
+  Zones: 1
+
+  Objects hiện tại (1 tracked):
+    Track#404 | cow | role=unknown (0%) | action=unknown | alert=ignore
+
+============================================================
+  4. PHÂN TÍCH EVENT LOG
+============================================================
+  Tổng events: 12161
+  Thời gian ghi: 92445.1 phút
+  Events/phút: 0.13
+  Khoảng: 2026-03-04 14:49:33 → 2026-05-07 19:34:39
+
+  --- Phân phối theo Alert Level ---
+    alert        : 10103 ██████████████████████████████
+    warning      : 1525 ██████████████████████████████
+    critical     :  533 ██████████████████████████████
+
+  --- Phân phối theo Role (top 10) ---
+    normal               : 6250
+    unknown              : 4510
+    shipper              : 1381
+    construction         : 13
+    worker               : 5
+    janitor              : 1
+    chef                 : 1
+
+  --- Phân phối theo Action ---
+    unknown              : 12023
+    standing             : 100
+    falling              : 27
+    running              : 8
+    walking              : 3
+
+  --- Phân phối theo Zone ---
+    restricted_area      : 11986
+    zone_1               : 104
+    entrance             : 38
+    outside              : 27
+    zone_2               : 3
+    2                    : 3
+
+============================================================
+  5. MẪU EVENTS GẦN NHẤT (ưu tiên alert/critical)
+============================================================
+  [2026-05-07 19:34:39] level=warning  role=worker          action=running      zone=zone_1          | ⚠️ [WARNING-ML] #402 worker in 'zone_1', action=🏃running(65%
+  [2026-05-07 19:33:42] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #383 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:33:07] level=warning  role=worker          action=running      zone=zone_1          | ⚠️ [WARNING-ML] #360 worker in 'zone_1', action=🏃running(65%
+  [2026-05-07 19:29:28] level=alert    role=shipper         action=falling      zone=outside         | 🔴 [ALERT-ML] #298 shipper, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:29:19] level=alert    role=shipper         action=falling      zone=outside         | 🔴 [ALERT-ML] #298 shipper, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:28:14] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #260 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:26:46] level=alert    role=normal          action=walking      zone=zone_1          | 🔴 [ALERT-ML] #232 normal in 'zone_1', action=🚶walking(70%) (
+  [2026-05-07 19:26:37] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #224 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:26:29] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #224 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:23:48] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #163 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:23:05] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #148 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:23:03] level=alert    role=unknown         action=standing     zone=zone_1          | 🔴 [ALERT-ML] #150 unknown in 'zone_1', action=🧍standing(75%)
+  [2026-05-07 19:22:36] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #143 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:22:28] level=alert    role=unknown         action=falling      zone=outside         | 🔴 [ALERT-ML] #143 unknown, action=🚨falling(60%) (conf=100%)
+  [2026-05-07 19:22:24] level=alert    role=construction    action=falling      zone=outside         | 🔴 [ALERT-ML] #138 construction, action=🚨falling(60%) (conf=1
+
+============================================================
+  6. LỖI / WARNING TỪ LOG
+============================================================
+  (không tìm thấy lỗi trong log files)
+
+============================================================
+  7. NHẬN XÉT THỰC TẾ TỪ NGƯỜI DÙNG
+============================================================
+
+  1. FPS quan sát được khi có 1 người trong frame:
+    → 30
+
+  2. FPS quan sát được khi có 3+ người trong frame:
+    → 16
+
+  3. Role classification có đúng không? (VD: shipper nhận đúng là Shipper) [y/n/một phần]:
+    → một phần
+
+  4. Action recognition có hoạt động không? (đứng/đi/chạy) [y/n]:
+    → một phần
+
+  5. Alert có được kích hoạt đúng không? [y/n/chưa test]:
+    → n
+
+  6. Telegram notification có gửi được không? [y/n/chưa cấu hình]:
+    → chưa cấu hình
+
+  7. Zone detection có hoạt động không? [y/n/chưa cấu hình]:
+    → y
+
+  8. Vấn đề / lỗi nào gặp phải (mô tả tự do):
+    → trên màn hình có hiện 1 đường màu đỏ thể hiện lộ trình đã di chuyển của đối tượng, và đường màu đỏ đó kể cả khi đối tượng đã di chuyển khuất khỏi cam rồi vẫn không mất đi và hiện nguyên nên màn hình và đè nên nhau thành rất nhiều đường đỏ của mỗi đối tượng khác nhau, tính năng tracking theo đối tượng vẫn chưa được ổn định, dễ bị mất tracking khi đối tượng di chuyển nhanh hoặc là fps bị drop, tính năng nhận diện ALERT hoạt động không chính xác, và cả tính năng Action Distribution luôn nhận diện hành động falling chưa chính xác, trong khung hình không có đổi tượng nào bị ngã nhưng model vẫn chuẩn đoán falling, và chức năng nhận diện người và phương tiện chưa được chính xác lắm, hệ thông lâu lâu hay bị nhầm người và phương tiện với nhau
+
+  9. Môi trường test (VD: webcam laptop, camera IP, file video):
+    → file video
+
+  10. Ghi chú thêm:
+    → không có
+
+============================================================
+  CÁCH GỬI REPORT NÀY CHO AI:
+  1. Copy toàn bộ nội dung file này
+  2. Paste vào cửa sổ chat với AI
+  3. Thêm mô tả: 'đây là kết quả test thực tế, phân tích và cải thiện'
+============================================================

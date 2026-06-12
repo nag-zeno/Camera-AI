@@ -1,0 +1,70 @@
+# ============================================================
+# Smart AI Security Camera System — Dependencies
+# Python 3.10+
+# ============================================================
+
+# --- Core Computer Vision ---
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0
+imageio-ffmpeg>=0.5.1         # FFmpeg binary cho RTSP reader (tránh OpenCV H.265 async_lock bug)
+
+# --- Deep Learning (Object Detection) ---
+torch>=2.0.0
+torchvision>=0.15.0
+timm>=0.9.0                # EfficientNet-B2 (RoleNet V2), ConvNeXt-Tiny (RoleNet V3)
+ultralytics>=8.0.0        # YOLOv8 — auto-downloads weights
+
+# --- ONNX Runtime (RoleNet V3 fast inference & YOLOv8 DirectML GPU) ---
+# Chạy: python scripts/export_onnx.py  để tạo models/rolenet_v3.onnx
+onnxruntime-directml>=1.23.0 # Hỗ trợ GPU AMD/Intel/NVIDIA qua DirectML
+# onnxruntime>=1.16.0       # CPU inference (không cần GPU)
+# onnxruntime-gpu>=1.16.0 # Thay thế nếu có NVIDIA GPU
+onnx>=1.14.0              # Chỉ cần khi chạy export_onnx.py
+onnxscript>=0.1.0         # Chỉ cần khi chạy export_onnx.py
+
+# --- Geometry (Zone Detection) ---
+shapely>=2.0.0
+
+# --- Web API & UI ---
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+python-multipart>=0.0.6   # file upload support
+jinja2>=3.1.0             # HTML templates
+websockets>=11.0          # real-time updates
+
+# --- Data & Config ---
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# --- Utilities ---
+lap>=0.4.0                # Linear Assignment Problem (tracking)
+scipy>=1.11.0             # Hungarian algorithm cho optimal track matching (linear_sum_assignment)
+
+# ============================================================
+# Phase 6: ML Enhancement — ContextNet + RoleNet
+# ============================================================
+
+# --- ContextNet (XGBoost-based context reasoning) ---
+xgboost>=2.0.0            # XGBoost classifier cho ContextNet
+scikit-learn>=1.3.0       # train/val split, metrics, LabelEncoder
+pandas>=2.0.0             # Đọc/ghi CSV training data
+
+# --- Reporting & Explainability ---
+matplotlib>=3.7.0         # Vẽ biểu đồ (SHAP plot, training curves)
+shap>=0.44.0              # Explainability — giải thích quyết định AI
+
+# ============================================================
+# Phase 6: Data Collection (tùy chọn — chỉ cần khi thu thập data)
+# ============================================================
+
+# --- Image Crawler (thu thập ảnh từ Bing/Google) ---
+icrawler>=0.6.6           # pip install icrawler
+
+# --- Augmentation (tăng cường dataset) ---
+albumentations>=1.3.0     # Augmentation pipeline mạnh
+
+# ============================================================
+# NLG Engine — Sinh ngôn ngữ tự nhiên bằng Gemini API
+# ============================================================
+google-generativeai>=0.8.0  # Gemini API (NLG Engine — sinh câu thông báo tự nhiên tiếng Việt)
