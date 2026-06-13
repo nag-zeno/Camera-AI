@@ -350,6 +350,111 @@ header{
 .tg-label{font-size:.7rem;color:var(--muted);min-width:90px;flex-shrink:0}
 .hdr-btn{padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.72rem;transition:all .2s;font-family:'Inter',sans-serif}
 .hdr-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Video Player Modal ── */
+.vplayer-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(10px)}
+.vplayer-modal.open{display:flex}
+.vplayer-inner{
+  background:var(--panel);border:1px solid var(--border);border-radius:16px;
+  width:min(96vw,900px);max-height:92vh;display:flex;flex-direction:column;
+  overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.8);
+  animation:vpIn .25s ease;
+}
+@keyframes vpIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.vplayer-header{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.vplayer-title{flex:1;font-size:.82rem;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vplayer-badges{display:flex;gap:6px;flex-shrink:0}
+.vp-badge{
+  padding:2px 8px;border-radius:4px;font-size:.65rem;font-weight:700;
+  border:1px solid currentColor;white-space:nowrap;
+}
+.vp-badge.critical{color:#ff6b6b;border-color:#dc2626;background:rgba(220,38,38,.12)}
+.vp-badge.alert{color:#fb923c;border-color:#f97316;background:rgba(249,115,22,.12)}
+.vp-badge.warning{color:var(--warning);border-color:var(--warning);background:rgba(245,158,11,.1)}
+.vp-badge.info{color:var(--accent);border-color:var(--accent);background:rgba(0,201,255,.1)}
+.vplayer-video-wrap{
+  flex:1;background:#000;position:relative;display:flex;align-items:center;
+  justify-content:center;min-height:200px;max-height:60vh;
+}
+#vplayer-video{
+  max-width:100%;max-height:100%;width:100%;display:block;
+  outline:none;
+}
+.vplayer-footer{
+  padding:12px 16px;border-top:1px solid var(--border);display:flex;
+  align-items:center;gap:8px;flex-shrink:0;
+}
+.vplayer-meta{flex:1;font-size:.7rem;color:var(--muted)}
+.vplayer-meta span{margin-right:10px}
+
+/* ── Clip Grid Cards ── */
+.clips-toolbar{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;
+}
+.clips-search{
+  flex:1;min-width:120px;
+  background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);padding:5px 10px;font-size:.75rem;outline:none;
+  transition:border-color .2s;font-family:'Inter',sans-serif;
+}
+.clips-search:focus{border-color:var(--accent)}
+.clips-filter-btn{
+  padding:4px 10px;border-radius:5px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;font-size:.68rem;
+  transition:all .2s;font-family:'Inter',sans-serif;white-space:nowrap;
+}
+.clips-filter-btn.active{background:rgba(239,68,68,.15);color:var(--alert);border-color:var(--alert)}
+.clips-filter-btn:hover:not(.active){border-color:var(--accent);color:var(--accent)}
+.clips-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+  gap:10px;
+}
+.clip-card{
+  background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;transition:border-color .25s,transform .2s;
+  position:relative;
+}
+.clip-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.clip-card-thumb{
+  width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#0d1525,#1a2540);
+  display:flex;align-items:center;justify-content:center;position:relative;
+  overflow:hidden;cursor:pointer;
+}
+.clip-card-play{
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(0,201,255,.85);display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;transition:transform .2s,background .2s;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);
+}
+.clip-card-thumb:hover .clip-card-play{transform:scale(1.1);background:var(--accent)}
+.clip-card-level{
+  position:absolute;top:6px;left:6px;
+  padding:2px 7px;border-radius:4px;font-size:.6rem;font-weight:700;
+}
+.clip-card-level.critical{background:rgba(220,38,38,.85);color:#fff}
+.clip-card-level.alert{background:rgba(249,115,22,.85);color:#fff}
+.clip-card-level.warning{background:rgba(245,158,11,.85);color:#fff}
+.clip-card-body{padding:9px 11px}
+.clip-card-role{font-size:.72rem;color:var(--accent);font-weight:600;margin-bottom:3px}
+.clip-card-date{font-size:.65rem;color:var(--muted);margin-bottom:4px;font-family:var(--mono)}
+.clip-card-size{font-size:.62rem;color:var(--muted)}
+.clip-card-actions{display:flex;gap:5px;margin-top:8px}
+.cc-btn{
+  flex:1;padding:4px 0;border-radius:5px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;font-size:.65rem;
+  text-align:center;transition:all .2s;font-family:'Inter',sans-serif;
+  text-decoration:none;display:flex;align-items:center;justify-content:center;gap:3px;
+}
+.cc-btn:hover{border-color:var(--accent);color:var(--accent)}
+.cc-btn.del:hover{border-color:var(--alert);color:var(--alert)}
+.clips-empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.clips-empty .ce-icon{font-size:2.5rem;margin-bottom:12px}
+.clips-empty .ce-msg{font-size:.82rem;margin-bottom:6px;color:var(--text)}
+.clips-empty .ce-sub{font-size:.7rem}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -1421,42 +1526,7 @@ function exportEventsCSV() {
   a.click();
 }
 
-// ── Clips Tab ──
-async function renderClipsTab(body) {
-  const r = await fetch('/api/recorder/clips');
-  const d = await r.json();
-  const clips = d.clips || [];
-  if (clips.length === 0) {
-    body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">
-      <div style="font-size:2rem;margin-bottom:10px">&#127909;</div>
-      <div>No alert clips recorded yet.</div>
-      <div style="font-size:.72rem;margin-top:6px">Clips are saved automatically when alert/critical events are detected.</div>
-    </div>`;
-    return;
-  }
-  const lvlColor = n => n.includes('critical') ? 'var(--alert)' : n.includes('alert') ? '#fb923c' : 'var(--warning)';
-  body.innerHTML = `
-    <div style="font-size:.72rem;color:var(--muted);margin-bottom:10px">${clips.length} clip(s) — stored in <code>recordings/</code></div>
-    ${clips.map((c,i) => `
-    <div class="clip-item">
-      <span class="clip-icon">&#127909;</span>
-      <div class="clip-info">
-        <div class="clip-name" style="color:${lvlColor(c.filename)}">${c.filename}</div>
-        <div class="clip-meta">${c.created_at} &bull; ${c.size_kb} KB</div>
-      </div>
-      <a href="/api/recorder/clips/${c.filename}" download class="clip-btn">&#11015; DL</a>
-      <button class="clip-del" onclick="deleteClip('${c.filename}',this)" title="Xoa clip">&#128465;</button>
-    </div>`).join('')}`;
-}
-
-async function deleteClip(filename, btn) {
-  if (!confirm('Xoa clip: ' + filename + '?')) return;
-  try {
-    const r = await fetch('/api/recorder/clips/' + encodeURIComponent(filename), {method:'DELETE'});
-    if (!r.ok) throw new Error((await r.json()).detail);
-    btn.closest('.clip-item').remove();
-  } catch(e) { alert('Error: ' + e.message); }
-}
+// ── Clips Tab & deleteClip — defined in second <script> block below ──
 
 // ── Telegram Tab ──
 async function renderTelegramTab(body) {
@@ -1592,6 +1662,234 @@ async function saveRecorderConfig() {
 document.getElementById('analytics-modal').addEventListener('click', function(e) {
   if (e.target === this) closeAnalytics();
 });
+</script>
+
+<!-- ══ VIDEO PLAYER MODAL ══ -->
+<div class="vplayer-modal" id="vplayer-modal">
+  <div class="vplayer-inner">
+    <div class="vplayer-header">
+      <span style="font-size:1.1rem">&#127909;</span>
+      <span class="vplayer-title" id="vplayer-title">Loading...</span>
+      <div class="vplayer-badges" id="vplayer-badges"></div>
+      <button class="zone-close-btn" onclick="closeVideoPlayer()" title="Đóng (Esc)">&#10005;</button>
+    </div>
+    <div class="vplayer-video-wrap">
+      <video id="vplayer-video" controls preload="metadata" controlslist="nodownload">
+        <source id="vplayer-source" src="" type="video/mp4">
+        Trình duyệt không hỗ trợ thẻ video.
+      </video>
+    </div>
+    <div class="vplayer-footer">
+      <div class="vplayer-meta" id="vplayer-meta"></div>
+      <a id="vplayer-dl-btn" href="#" download class="cc-btn" style="flex:none;padding:5px 14px;font-size:.72rem">
+        &#11015; Tải về
+      </a>
+      <button class="cc-btn" id="vplayer-prev-btn" onclick="playAdjacentClip(-1)" style="flex:none;padding:5px 10px" title="Clip trước">&#8592;</button>
+      <button class="cc-btn" id="vplayer-next-btn" onclick="playAdjacentClip(1)"  style="flex:none;padding:5px 10px" title="Clip tiếp theo">&#8594;</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ VIDEO PLAYER ══
+let _currentClips = [];
+let _currentClipIdx = -1;
+let _clipsFilter = 'all';
+let _clipsSearch = '';
+
+function _parseClipMeta(filename) {
+  // alert_20260607_183845_alert_chef.mp4
+  const m = filename.match(/alert_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_([^_]+)_(.+?)\.mp4/);
+  if (!m) return { level:'unknown', role:'unknown', datetime: filename };
+  const dt = `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}`;
+  return { level: m[7], role: m[8], datetime: dt };
+}
+
+function openVideoPlayer(filename, idx) {
+  _currentClipIdx = idx;
+  _loadVideoPlayer(filename);
+  document.getElementById('vplayer-modal').classList.add('open');
+  document.getElementById('vplayer-video').focus();
+}
+
+function _loadVideoPlayer(filename) {
+  const meta = _parseClipMeta(filename);
+  const clip  = _currentClips.find(c => c.filename === filename) || {};
+
+  // Title
+  document.getElementById('vplayer-title').textContent = filename;
+
+  // Badges
+  const lvlCls = { critical:'critical', alert:'alert', warning:'warning' };
+  const lvlLbl = { critical:'🔴 CRITICAL', alert:'🚨 ALERT', warning:'⚠ WARNING' };
+  const badges = document.getElementById('vplayer-badges');
+  badges.innerHTML = `
+    <span class="vp-badge ${lvlCls[meta.level]||'info'}">${lvlLbl[meta.level]||meta.level.toUpperCase()}</span>
+    <span class="vp-badge info">&#128101; ${meta.role}</span>`;
+
+  // Meta
+  const sizeKb = clip.size_kb || '';
+  document.getElementById('vplayer-meta').innerHTML =
+    `<span>&#128197; ${meta.datetime}</span>`
+    + (sizeKb ? `<span>&#128190; ${sizeKb} KB</span>` : '');
+
+  // Download button
+  document.getElementById('vplayer-dl-btn').href = `/api/recorder/clips/${encodeURIComponent(filename)}`;
+  document.getElementById('vplayer-dl-btn').setAttribute('download', filename);
+
+  // Video source — use /recordings/ endpoint (supports HTTP Range)
+  const video = document.getElementById('vplayer-video');
+  const src   = document.getElementById('vplayer-source');
+  video.pause();
+  src.src = `/recordings/${encodeURIComponent(filename)}`;
+  video.load();
+  video.play().catch(() => {});
+
+  // Prev/Next nav
+  document.getElementById('vplayer-prev-btn').disabled = _currentClipIdx <= 0;
+  document.getElementById('vplayer-next-btn').disabled = _currentClipIdx >= _currentClips.length - 1;
+}
+
+function playAdjacentClip(delta) {
+  const newIdx = _currentClipIdx + delta;
+  if (newIdx < 0 || newIdx >= _currentClips.length) return;
+  _currentClipIdx = newIdx;
+  _loadVideoPlayer(_currentClips[newIdx].filename);
+}
+
+function closeVideoPlayer() {
+  const video = document.getElementById('vplayer-video');
+  video.pause();
+  video.src = '';
+  document.getElementById('vplayer-source').src = '';
+  document.getElementById('vplayer-modal').classList.remove('open');
+}
+
+// Close on backdrop click
+document.getElementById('vplayer-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeVideoPlayer();
+});
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('vplayer-modal').classList.contains('open')) {
+    closeVideoPlayer();
+  }
+  if (e.key === 'ArrowLeft'  && document.getElementById('vplayer-modal').classList.contains('open')) playAdjacentClip(-1);
+  if (e.key === 'ArrowRight' && document.getElementById('vplayer-modal').classList.contains('open')) playAdjacentClip(1);
+});
+
+// ══ CLIPS TAB (enhanced) ══
+async function renderClipsTab(body) {
+  const r = await fetch('/api/recorder/clips');
+  const d = await r.json();
+  _currentClips = d.clips || [];
+
+  if (_currentClips.length === 0) {
+    body.innerHTML = `<div class="clips-empty">
+      <div class="ce-icon">&#127909;</div>
+      <div class="ce-msg">Chưa có clip nào được ghi lại.</div>
+      <div class="ce-sub">Clips được lưu tự động khi phát hiện sự kiện alert/critical.</div>
+    </div>`;
+    return;
+  }
+
+  // Build toolbar + grid
+  body.innerHTML = `
+    <div class="clips-toolbar">
+      <input class="clips-search" id="clips-search" type="text" placeholder="&#128269; Tìm theo tên, role..." value="${_clipsSearch}" oninput="filterClipsGrid(this.value)">
+      <button class="clips-filter-btn ${_clipsFilter==='all'?'active':''}" onclick="setClipsFilter('all',this)">Tất cả</button>
+      <button class="clips-filter-btn ${_clipsFilter==='critical'?'active':''}" onclick="setClipsFilter('critical',this)">🔴 Critical</button>
+      <button class="clips-filter-btn ${_clipsFilter==='alert'?'active':''}" onclick="setClipsFilter('alert',this)">🚨 Alert</button>
+    </div>
+    <div style="font-size:.7rem;color:var(--muted);margin-bottom:10px">
+      <span id="clips-count">${_currentClips.length}</span> clip(s) — lưu tại <code>recordings/</code>
+      &nbsp;·&nbsp; <button class="clips-filter-btn" onclick="refreshClipsTab()" style="padding:2px 7px">&#8635; Làm mới</button>
+    </div>
+    <div class="clips-grid" id="clips-grid"></div>`;
+
+  _renderClipsGrid();
+}
+
+function _renderClipsGrid() {
+  const grid = document.getElementById('clips-grid');
+  if (!grid) return;
+
+  const search = (_clipsSearch || '').toLowerCase();
+  const filtered = _currentClips.filter(c => {
+    const meta = _parseClipMeta(c.filename);
+    if (_clipsFilter !== 'all' && meta.level !== _clipsFilter) return false;
+    if (search && !c.filename.toLowerCase().includes(search) && !meta.role.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('clips-count').textContent = filtered.length + '/' + _currentClips.length;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:.78rem">Không tìm thấy clip nào.</div>`;
+    return;
+  }
+
+  const lvlColor = { critical:'var(--alert)', alert:'#fb923c', warning:'var(--warning)' };
+  const lvlIcon  = { critical:'🔴', alert:'🚨', warning:'⚠️' };
+
+  grid.innerHTML = filtered.map((c, i) => {
+    const globalIdx = _currentClips.indexOf(c);
+    const meta = _parseClipMeta(c.filename);
+    const lvl  = meta.level;
+    const ico  = lvlIcon[lvl] || '📹';
+    const dt   = meta.datetime;
+    const role = meta.role;
+    const dlUrl = `/api/recorder/clips/${encodeURIComponent(c.filename)}`;
+    return `<div class="clip-card" id="clip-card-${globalIdx}">
+      <div class="clip-card-thumb" onclick="openVideoPlayer('${c.filename}',${globalIdx})">
+        <span class="clip-card-level ${lvl}">${ico} ${lvl.toUpperCase()}</span>
+        <div class="clip-card-play">&#9654;</div>
+        <!-- waveform accent lines -->
+        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,${lvlColor[lvl]||'var(--accent)'},transparent)"></div>
+      </div>
+      <div class="clip-card-body">
+        <div class="clip-card-role">&#128101; ${role}</div>
+        <div class="clip-card-date">&#128197; ${dt}</div>
+        <div class="clip-card-size">&#128190; ${c.size_kb} KB</div>
+        <div class="clip-card-actions">
+          <button class="cc-btn" onclick="openVideoPlayer('${c.filename}',${globalIdx})">&#9654; Xem</button>
+          <a class="cc-btn" href="${dlUrl}" download="${c.filename}">&#11015; DL</a>
+          <button class="cc-btn del" onclick="deleteClip('${c.filename}',${globalIdx})">&#128465;</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setClipsFilter(f, btn) {
+  _clipsFilter = f;
+  document.querySelectorAll('.clips-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _renderClipsGrid();
+}
+
+function filterClipsGrid(val) {
+  _clipsSearch = val;
+  _renderClipsGrid();
+}
+
+async function refreshClipsTab() {
+  const body = document.getElementById('analytics-body');
+  await renderClipsTab(body);
+}
+
+async function deleteClip(filename, globalIdx) {
+  if (!confirm('Xóa clip: ' + filename + '?')) return;
+  try {
+    const r = await fetch('/api/recorder/clips/' + encodeURIComponent(filename), {method:'DELETE'});
+    if (!r.ok) throw new Error((await r.json()).detail);
+    _currentClips = _currentClips.filter(c => c.filename !== filename);
+    _renderClipsGrid();
+    // If currently playing this clip, close player
+    if (_currentClipIdx === globalIdx) closeVideoPlayer();
+  } catch(e) { alert('Lỗi: ' + e.message); }
+}
 </script>
 </body>
 </html>

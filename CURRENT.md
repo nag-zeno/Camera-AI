@@ -5,9 +5,9 @@
 ---
 
 ## 📌 Thông tin chung
-- **Ngày cập nhật gần nhất:** 07/06/2026 — 19:57 (GMT+7)
-- **Phiên bản hệ thống:** v2.7 (Retrain ContextNet V2 với log thực tế mới, Báo cáo đánh giá đầu tiên)
-- **Trạng thái tổng thể:** Hệ thống đã chạy vài tiếng đồng hồ thu thập 12,651 events thực tế, đã retrain ContextNet (accuracy 80.5%), thu thập báo cáo đánh giá đầu tiên tại `reports/eval_report_20260607_195706.txt`.
+- **Ngày cập nhật gần nhất:** 13/06/2026 — 09:15 (GMT+7)
+- **Phiên bản hệ thống:** v2.8 (Đang phát triển Tab Recordings & sửa lỗi Video Codec)
+- **Trạng thái tổng thể:** Đã thêm giao diện quản lý và xem video Recordings trên Dashboard, viết endpoint stream video hỗ trợ HTTP Range. Đang xử lý lỗi codec video FMP4 chưa tương thích trình duyệt.
 
 ---
 
@@ -23,15 +23,29 @@
 9. 💬 **NLG Engine:** ✅ Sinh mô tả Tiếng Việt tự nhiên bằng Gemini API + fallback rule-based mượt mà.
 10. 📝 **EventLogger:** ✅ Lưu đầy đủ 16 features sự kiện vào `logs/events.jsonl` thời gian thực.
 11. 🔔 **TelegramNotifier:** ✅ Push alert + ảnh chụp qua Telegram, cấu hình & test trực quan từ Web UI.
-12. 🎬 **AlertRecorder:** ✅ Ghi video clip alert (5s pre-buffer, 8s post-buffer), tự động dọn dẹp khi đầy ổ.
-13. 🖥️ **Web Dashboard:** ✅ FastAPI, MJPEG Stream, Analytics Modal (Timeline 24h, quản lý ghi hình, config).
+12. 🎬 **AlertRecorder:** ✅ Ghi video clip alert (5s pre-buffer, 8s post-buffer). Đang cập nhật codec sang H.264.
+13. 🖥️ **Web Dashboard:** ✅ FastAPI, MJPEG Stream, Analytics Modal (Timeline 24h, quản lý và phát video Recordings, config).
 14. 🧠 **SHAP Explanation:** ✅ Giải thích quyết định ContextNet XGBoost (Global Feature Importance & Per-Object Waterfall Chart) trực quan trên dashboard.
 
 ---
 
 ## 📅 Lịch sử cập nhật gần nhất (Changelog)
 
-### **Phiên bản v2.6 (06/06/2026) — Cập nhật hiện tại**
+### **Phiên bản v2.8 (13/06/2026) — Đang phát triển (In Progress)**
+- **Tích hợp Tab xem video Recordings trên Dashboard UI ([templates/dashboard.html](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/templates/dashboard.html))**
+  - Thiết kế tab **"Recordings"** bên trong modal Analytics với grid hiển thị các video clip cảnh báo.
+  - Tích hợp ô tìm kiếm (theo tên file, role) và các bộ lọc nhanh (Tất cả, 🔴 Critical, 🚨 Alert).
+  - Xây dựng Video Player modal tùy chỉnh với đầy đủ thông tin (role, mức độ cảnh báo, ngày giờ, dung lượng), hỗ trợ phím tắt (`←`/`→` để chuyển clip, `Esc` để đóng), tự động đóng và dừng phát khi bấm ra ngoài.
+  - Bổ sung nút Tải xuống (Download) và Xóa (Delete) trực tiếp cho mỗi clip.
+- **Endpoint Stream Video hỗ trợ HTTP Range ([app.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/app.py))**
+  - Viết endpoint `/recordings/{filename}` trả về stream dữ liệu video có hỗ trợ header `Range` (HTTP 206 Partial Content), cho phép trình duyệt tua (seek) video mượt mà.
+- **Phát hiện lỗi Codec và lên phương án xử lý (In Progress)**
+  - Phát hiện video được ghi bằng codec `FMP4` (MPEG-4 Part 2) không được hỗ trợ mặc định bởi các trình duyệt hiện đại (như Chrome, Firefox), dẫn đến lỗi không load được video ở client.
+  - Lên phương án giải quyết:
+    1. Sửa `alert_recorder.py` ghi trực tiếp bằng codec H.264.
+    2. Sửa endpoint `/recordings/{filename}` để tự động convert on-the-fly từ FMP4 sang H.264 bằng `FFmpeg` (thông qua `imageio_ffmpeg`) đối với các file cũ.
+
+### **Phiên bản v2.6 (06/06/2026)**
 - **Tích hợp SHAP Explanation cho ContextNet XGBoost ([app.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/app.py), [pipeline.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/pipeline.py), [context_engine_ml.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/modules/context_engine_ml.py))**
   - Bổ sung hàm tính SHAP values (`get_shap_explanation`) và feature importance (`get_feature_importance`) trong backend.
   - Thêm 2 endpoints: `GET /api/shap/feature_importance` và `GET /api/shap/explain?track_id=X`.
@@ -83,6 +97,9 @@
   - Thư mục `data/known_faces/` hiện tại chưa có dữ liệu mẫu. Cần sử dụng `add_known_face.py` để đăng ký khuôn mặt gia đình/nhân viên.
 - **Action Recognition fillrate thấp:**
   - Chỉ 212/12,651 (1.6%) events có `action` được nhận dạng. Cần kiểm tra lại logic trigger của ActionRecognizer trong `pipeline.py`.
+- **Lỗi không load được video trong tab Recordings (In Progress):**
+  - *Vấn đề tồn đọng:* Video ghi bằng OpenCV sử dụng codec `FMP4` không tương thích với trình duyệt Chrome/Firefox (chỉ nghe tiếng hoặc không chạy được).
+  - *Giải pháp tiếp theo:* Sửa đổi bộ ghi video ghi codec H.264 và xây dựng bộ transcode thời gian thực cho video cũ.
 
 ### ❌ CHƯA THỰC HIỆN / ĐỢI TRIỂN KHAI (PENDING)
 - **Kiểm thử RoleNet V3 trên Camera thực tế Việt Nam:** Cần thu thập thêm video/ảnh thực tế tại Việt Nam để đánh giá domain gap của mô hình ConvNeXt-Tiny.
@@ -95,43 +112,46 @@
 
 | Tên tệp | Vị trí | Vai trò |
 | :--- | :--- | :--- |
-| **`app.py`** | [app.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/app.py) | Điểm chạy chính (FastAPI Server + API endpoints + Dashboard) |
-| **`pipeline.py`** | [pipeline.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/pipeline.py) | Điều phối luồng xử lý video (14 modules kết nối) |
-| **`context_engine_ml.py`** | [context_engine_ml.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/modules/context_engine_ml.py) | ML-enhanced Context Reasoning Engine (tính toán SHAP và giải thích quyết định) |
-| **`config.py`** | [config.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/config.py) | Tập trung toàn bộ cấu hình hệ thống (ngưỡng, đường dẫn, tham số) |
-| **`models.py`** | [models.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/models.py) | Các lớp định nghĩa cấu trúc dữ liệu (`TrackedObject`, `AlertEvent`,...) |
-| **`nlg_engine.py`** | [nlg_engine.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/modules/nlg_engine.py) | Xử lý ngôn ngữ tự nhiên sinh cảnh báo tiếng Việt |
-| **`zone_detector.py`** | [zone_detector.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/modules/zone_detector.py) | Phát hiện xâm nhập vùng và tự động lưu/tải zone per-camera |
-| **`add_known_face.py`** | [add_known_face.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/scripts/add_known_face.py) | Công cụ quản lý, đăng ký khuôn mặt người quen qua webcam/ảnh |
-| **`export_training_data.py`** | [export_training_data.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai%20gg/camera-ai/scripts/export_training_data.py) | Xuất dữ liệu log và retrain ContextNet XGBoost |
+| **`app.py`** | [app.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai gg/camera-ai/app.py) | Điểm chạy chính (FastAPI Server + API endpoints + Dashboard) |
+| **`pipeline.py`** | [pipeline.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai gg/camera-ai/pipeline.py) | Điều phối luồng xử lý video (14 modules kết nối) |
+| **`context_engine_ml.py`** | [context_engine_ml.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai gg/camera-ai/modules/context_engine_ml.py) | ML-enhanced Context Reasoning Engine (tính toán SHAP và giải thích quyết định) |
+| **`config.py`** | [config.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai gg/camera-ai/config.py) | Tập trung toàn bộ cấu hình hệ thống (ngưỡng, đường dẫn, tham số) |
+| **`models.py`** | [models.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai gg/camera-ai/models.py) | Các lớp định nghĩa cấu trúc dữ liệu (`TrackedObject`, `AlertEvent`,...) |
+| **`nlg_engine.py`** | [nlg_engine.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai gg/camera-ai/modules/nlg_engine.py) | Xử lý ngôn ngữ tự nhiên sinh cảnh báo tiếng Việt |
+| **`zone_detector.py`** | [zone_detector.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai gg/camera-ai/modules/zone_detector.py) | Phát hiện xâm nhập vùng và tự động lưu/tải zone per-camera |
+| **`add_known_face.py`** | [add_known_face.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai gg/camera-ai/scripts/add_known_face.py) | Công cụ quản lý, đăng ký khuôn mặt người quen qua webcam/ảnh |
+| **`export_training_data.py`** | [export_training_data.py](file:///g:/My%20Drive/DoAnTotNghiep/camera-ai gg/camera-ai/scripts/export_training_data.py) | Xuất dữ liệu log và retrain ContextNet XGBoost |
 
 ---
 
 ## 🚀 Các Bước đề xuất Tiếp theo
 
-### ✅ ĐÃ HOÀN THÀNH (07/06/2026)
-1. ~~**Bước 2:** Chạy camera thu thập 12,651 events log trong vài tiếng đồng hồ.~~
-2. ~~**Bước 3:** Retrain ContextNet V2 → **accuracy 80.5%** trên 70,232 samples (real + synthetic).~~
-3. ~~**Bước 4:** Thu thập báo cáo đánh giá → `reports/eval_report_20260607_195706.txt`.~~
+### ✅ ĐÃ HOÀN THÀNH (13/06/2026)
+1. ~~**Tích hợp Tab Recordings & Custom Player:** Xem danh sách clip, lọc, tìm kiếm, phát, tải xuống và xóa trên Dashboard UI.~~
+2. ~~**Xây dựng Video Stream với HTTP Range:** Hỗ trợ seek/tua video từ frontend.~~
 
 ### 🔜 BƯỚC TIẾP THEO ƯU TIÊN CAO
 
-1. **Bước A (Vẽ Zone giám sát):**
+1. **Khắc phục lỗi video không chạy trên trình duyệt:**
+   - Sửa file `modules/alert_recorder.py` chuyển fourcc sang ghi bằng codec `H264` hoặc `avc1`.
+   - Cập nhật `/recordings/{filename}` trong `app.py` để tự động chuyển mã (transcode) file cũ định dạng `FMP4` thành `H264` sử dụng `imageio_ffmpeg` khi stream.
+
+2. **Bước A (Vẽ Zone giám sát):**
    - Mở dashboard, vào Zone Editor, vẽ ít nhất 1 vùng `restricted` và 1 vùng `allowed`.
    - Sau đó chạy camera thêm ~30 phút để thu log có `zone_type` và `zone_status` đầy đủ.
 
-2. **Bước B (Điều tra Action Recognition):**
+3. **Bước B (Điều tra Action Recognition):**
    - Chỉ 1.6% events có action — kiểm tra ngưỡng trigger ActionRecognizer trong `pipeline.py` và `config.py`.
    - Cần action như `standing/walking/running` fill đủ để mô hình học tốt hơn.
 
-3. **Bước C (Retrain lần 3 sau khi có zone data):**
+4. **Bước C (Retrain lần 3 sau khi có zone data):**
    - Sau bước A+B, chạy lại retrain:
      ```bash
      python scripts/export_training_data.py --retrain
      ```
    - Mục tiêu: accuracy > 85%.
 
-4. **Bước D (Đăng ký khuôn mặt người quen):**
+5. **Bước D (Đăng ký khuôn mặt người quen):**
    - Chạy lệnh sau để đăng ký 1-2 người vào hệ thống:
      ```bash
      python scripts/add_known_face.py

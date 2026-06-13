@@ -41,7 +41,7 @@ from typing import Optional
 import cv2
 import numpy as np
 import uvicorn
-from fastapi import FastAPI, HTTPException, Query, UploadFile, File
+from fastapi import FastAPI, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import (
     HTMLResponse, StreamingResponse, JSONResponse
 )
@@ -562,6 +562,70 @@ async def download_clip(filename: str):
         media_type  = "video/mp4",
         filename    = safe_name,
     )
+
+
+@app.get("/recordings/{filename}", summary="Stream video clip (hỗ trợ HTTP Range cho trình duyệt)")
+async def stream_clip(filename: str, request: Request):
+    """
+    Stream video clip với HTTP Range support để trình duyệt có thể
+    tua/seek video trực tiếp qua thẻ <video>.
+    """
+    from config import RECORDINGS_DIR
+
+    safe_name = Path(filename).name
+    clip_path = RECORDINGS_DIR / safe_name
+    if not clip_path.exists():
+        raise HTTPException(status_code=404, detail=f"Clip '{filename}' not found")
+
+    file_size = clip_path.stat().st_size
+    range_header = request.headers.get("range")
+
+    def _iter_file(path: Path, start: int, end: int, chunk: int = 1 << 20):
+        with open(path, "rb") as f:
+            f.seek(start)
+            remaining = end - start + 1
+            while remaining > 0:
+                data = f.read(min(chunk, remaining))
+                if not data:
+                    break
+                remaining -= len(data)
+                yield data
+
+    if range_header:
+        # Parse "bytes=start-end"
+        try:
+            range_val = range_header.replace("bytes=", "")
+            range_start, range_end = range_val.split("-")
+            start = int(range_start)
+            end   = int(range_end) if range_end else file_size - 1
+        except Exception:
+            raise HTTPException(status_code=416, detail="Invalid Range header")
+
+        end = min(end, file_size - 1)
+        content_length = end - start + 1
+
+        return StreamingResponse(
+            _iter_file(clip_path, start, end),
+            status_code=206,
+            media_type="video/mp4",
+            headers={
+                "Content-Range"  : f"bytes {start}-{end}/{file_size}",
+                "Accept-Ranges"  : "bytes",
+                "Content-Length" : str(content_length),
+                "Cache-Control"  : "no-cache",
+            },
+        )
+    else:
+        return StreamingResponse(
+            _iter_file(clip_path, 0, file_size - 1),
+            status_code=200,
+            media_type="video/mp4",
+            headers={
+                "Accept-Ranges"  : "bytes",
+                "Content-Length" : str(file_size),
+                "Cache-Control"  : "no-cache",
+            },
+        )
 
 
 # ============================================================
